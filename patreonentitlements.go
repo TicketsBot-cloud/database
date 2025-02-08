@@ -3,7 +3,8 @@ package database
 import (
 	"context"
 	_ "embed"
-	"github.com/TicketsBot/common/model"
+
+	"github.com/TicketsBot-cloud/common/model"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"

@@ -5,7 +5,7 @@ go 1.22
 toolchain go1.22.4
 
 require (
-	github.com/TicketsBot/common v0.0.0-20241104184641-e39c64bdcf3e
+	github.com/TicketsBot-cloud/common v0.0.0-20250208132851-d5083bb04d98
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgtype v1.14.0
 	github.com/jackc/pgx v3.6.2+incompatible
