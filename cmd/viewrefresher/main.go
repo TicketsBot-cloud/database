@@ -1,12 +1,12 @@
 package main
 
 import (
-	"context"
-	"github.com/TicketsBot/database"
-	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/sirupsen/logrus"
 	"os"
 	"time"
+
+	"github.com/TicketsBot-cloud/database"
+	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/sirupsen/logrus"
 )
 
 func main() {
