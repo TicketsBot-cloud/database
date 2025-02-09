@@ -2,9 +2,10 @@ package database
 
 import (
 	"context"
+	"time"
+
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"time"
 )
 
 type TicketClaims struct {
@@ -35,6 +36,17 @@ func (c *TicketClaims) Get(ctx context.Context, guildId uint64, ticketId int) (u
 		e = err
 	}
 
+	return
+}
+
+func (c *TicketClaims) ImportBulk(ctx context.Context, guildId uint64, claims map[int]uint64) (err error) {
+	rows := make([][]interface{}, 0)
+
+	for ticketId, userId := range claims {
+		rows = append(rows, []interface{}{guildId, ticketId, userId})
+	}
+
+	_, err = c.CopyFrom(ctx, pgx.Identifier{"ticket_claims"}, []string{"guild_id", "ticket_id", "user_id"}, pgx.CopyFromRows(rows))
 	return
 }
 

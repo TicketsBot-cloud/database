@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -48,6 +49,20 @@ func (m *TicketMembers) Get(ctx context.Context, guildId uint64, ticketId int) (
 
 		members = append(members, userId)
 	}
+
+	return
+}
+
+func (m *TicketMembers) ImportBulk(ctx context.Context, guildId uint64, ticketUsers map[int][]uint64) (err error) {
+	rows := make([][]interface{}, 0)
+
+	for ticketId, users := range ticketUsers {
+		for _, userId := range users {
+			rows = append(rows, []interface{}{guildId, ticketId, userId})
+		}
+	}
+
+	_, err = m.CopyFrom(ctx, pgx.Identifier{"ticket_members"}, []string{"guild_id", "ticket_id", "user_id"}, pgx.CopyFromRows(rows))
 
 	return
 }

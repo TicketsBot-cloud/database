@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+
 	"github.com/jackc/pgx/pgtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -147,6 +148,18 @@ func (r *ServiceRatings) GetRange(ctx context.Context, guildId uint64, lowerId, 
 	}
 
 	return ratings, nil
+}
+
+func (r *ServiceRatings) ImportBulk(ctx context.Context, guildId uint64, ratings map[int]uint8) (err error) {
+	rows := make([][]interface{}, 0)
+
+	for ticketId, rating := range ratings {
+		rows = append(rows, []interface{}{guildId, ticketId, rating})
+	}
+
+	_, err = r.CopyFrom(ctx, pgx.Identifier{"service_ratings"}, []string{"guild_id", "ticket_id", "rating"}, pgx.CopyFromRows(rows))
+
+	return
 }
 
 func (r *ServiceRatings) Set(ctx context.Context, guildId uint64, ticketId int, rating uint8) (err error) {
