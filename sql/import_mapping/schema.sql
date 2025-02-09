@@ -1,4 +1,4 @@
-CREATE TYPE mapping_area AS ENUM ('ticket', 'form', 'form_input');
+CREATE TYPE mapping_area AS ENUM ('ticket', 'form', 'form_input', 'panel');
 
 CREATE TABLE IF NOT EXISTS import_mapping
 (

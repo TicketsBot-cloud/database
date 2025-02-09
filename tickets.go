@@ -93,6 +93,39 @@ CREATE INDEX IF NOT EXISTS tickets_panel_id ON tickets("panel_id");
 `
 }
 
+func (t *TicketTable) BulkImport(ctx context.Context, guildId uint64, tickets []Ticket) (err error) {
+	rows := make([][]interface{}, len(tickets))
+
+	for i, ticket := range tickets {
+		fmt.Println(ticket.Id)
+		rows[i] = []interface{}{
+			ticket.Id,
+			guildId,
+			ticket.ChannelId,
+			ticket.UserId,
+			ticket.Open,
+			ticket.OpenTime,
+			ticket.WelcomeMessageId,
+			ticket.PanelId,
+			ticket.HasTranscript,
+			ticket.CloseTime,
+			ticket.IsThread,
+			ticket.JoinMessageId,
+			ticket.NotesThreadId,
+			"CLOSED",
+		}
+	}
+
+	_, err = t.CopyFrom(
+		ctx,
+		pgx.Identifier{"tickets"},
+		[]string{"id", "guild_id", "channel_id", "user_id", "open", "open_time", "welcome_message_id", "panel_id", "has_transcript", "close_time", "is_thread", "join_message_id", "notes_thread_id", "status"},
+		pgx.CopyFromRows(rows),
+	)
+
+	return
+}
+
 func (t *TicketTable) Create(ctx context.Context, guildId, userId uint64, isThread bool, panelId *int) (id int, err error) {
 	query := `
 INSERT INTO tickets("id", "guild_id", "user_id", "open", "open_time", "is_thread", "panel_id", "status")
