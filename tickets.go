@@ -97,7 +97,6 @@ func (t *TicketTable) BulkImport(ctx context.Context, guildId uint64, tickets []
 	rows := make([][]interface{}, len(tickets))
 
 	for i, ticket := range tickets {
-		fmt.Println(ticket.Id)
 		rows[i] = []interface{}{
 			ticket.Id,
 			guildId,
