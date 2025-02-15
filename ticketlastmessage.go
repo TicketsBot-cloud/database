@@ -2,9 +2,10 @@ package database
 
 import (
 	"context"
+	"time"
+
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"time"
 )
 
 type TicketLastMessageTable struct {
@@ -54,6 +55,24 @@ WHERE "guild_id" = $1 AND "ticket_id" = $2;`
 		e = err
 	}
 
+	return
+}
+
+func (m *TicketLastMessageTable) ImportBulk(ctx context.Context, guildId uint64, lastMessages map[int]TicketLastMessage) (err error) {
+	rows := make([][]interface{}, 0)
+
+	for i, msg := range lastMessages {
+		rows = append(rows, []interface{}{
+			guildId,
+			i,
+			msg.LastMessageId,
+			msg.LastMessageTime,
+			msg.UserId,
+			msg.UserIsStaff,
+		})
+	}
+
+	_, err = m.CopyFrom(ctx, pgx.Identifier{"ticket_last_message"}, []string{"guild_id", "ticket_id", "last_message_id", "last_message_time", "user_id", "user_is_staff"}, pgx.CopyFromRows(rows))
 	return
 }
 
