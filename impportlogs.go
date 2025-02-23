@@ -13,8 +13,9 @@ type ImportLogsTable struct {
 }
 
 type ImportRun struct {
-	RunId int       `json:"run_id"`
-	Date  time.Time `json:"date"`
+	RunId int          `json:"run_id"`
+	Date  time.Time    `json:"date"`
+	Logs  []ImportLogs `json:"logs"`
 }
 
 type ImportLogs struct {
@@ -22,8 +23,8 @@ type ImportLogs struct {
 	LogType    string    `json:"log_type"`
 	RunId      int       `json:"run_id"`
 	RunLogId   int       `json:"run_log_id"`
-	EntityType string    `json:"entity_type"`
-	Message    string    `json:"message"`
+	EntityType *string   `json:"entity_type"`
+	Message    *string   `json:"message"`
 	Date       time.Time `json:"date"`
 }
 
@@ -67,7 +68,38 @@ func (s *ImportLogsTable) GetRuns(ctx context.Context, guildId uint64) ([]Import
 		runs = append(runs, mappingEntry)
 	}
 
+	for i := range runs {
+		logs, err := s.GetRunLogs(ctx, guildId, runs[i].RunId)
+		if err != nil {
+			return nil, err
+		}
+
+		runs[i].Logs = logs
+	}
+
 	return runs, nil
+}
+
+func (s *ImportLogsTable) GetRunLogs(ctx context.Context, guildId uint64, runId int) ([]ImportLogs, error) {
+	query := `SELECT guild_id, log_type, run_id, run_log_id, entity_type, message, date FROM import_logs WHERE guild_id = $1 AND run_id = $2 ORDER BY run_log_id ASC;`
+
+	var logs []ImportLogs
+
+	rows, err := s.Query(ctx, query, guildId, runId)
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		var logEntry ImportLogs
+		if err := rows.Scan(&logEntry.GuildId, &logEntry.LogType, &logEntry.RunId, &logEntry.RunLogId, &logEntry.EntityType, &logEntry.Message, &logEntry.Date); err != nil {
+			return nil, err
+		}
+
+		logs = append(logs, logEntry)
+	}
+
+	return logs, nil
 }
 
 func (s *ImportLogsTable) CreateRun(ctx context.Context, guildId uint64) (int, error) {
