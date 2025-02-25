@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	_ "embed"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -113,6 +114,18 @@ func (s *ImportLogsTable) CreateRun(ctx context.Context, guildId uint64) (int, e
 }
 
 func (s *ImportLogsTable) AddLog(ctx context.Context, guildId uint64, runId int, logType string, entityType string, message string) error {
+	return s.addLog(ctx, guildId, runId, logType, entityType, message, 1)
+}
+
+func (s *ImportLogsTable) addLog(ctx context.Context, guildId uint64, runId int, logType string, entityType string, message string, try int) error {
 	_, err := s.Exec(ctx, importLogsSet, guildId, logType, runId, entityType, message)
+	if err != nil && strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
+		// Try again
+		if try > 5 {
+			return err
+		}
+
+		return s.addLog(ctx, guildId, runId, logType, entityType, message, try+1)
+	}
 	return err
 }
