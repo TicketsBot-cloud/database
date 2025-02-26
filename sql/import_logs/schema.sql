@@ -1,6 +1,7 @@
 CREATE TABLE IF NOT EXISTS import_logs (
     guild_id BIGINT NOT NULL,
     log_type VARCHAR(255) NOT NULL,
+    run_type VARCHAR(255) NOT NULL DEFAULT 'DATA',
     run_id INT NOT NULL,
     run_log_id INT NOT NULL,
     entity_type VARCHAR(255),

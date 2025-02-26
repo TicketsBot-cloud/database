@@ -14,14 +14,16 @@ type ImportLogsTable struct {
 }
 
 type ImportRun struct {
-	RunId int          `json:"run_id"`
-	Date  time.Time    `json:"date"`
-	Logs  []ImportLogs `json:"logs"`
+	RunId   int          `json:"run_id"`
+	RunType string       `json:"run_type"`
+	Date    time.Time    `json:"date"`
+	Logs    []ImportLogs `json:"logs"`
 }
 
 type ImportLogs struct {
 	GuildId    uint64    `json:"guild_id"`
 	LogType    string    `json:"log_type"`
+	RunType    string    `json:"run_type"`
 	RunId      int       `json:"run_id"`
 	RunLogId   int       `json:"run_log_id"`
 	EntityType *string   `json:"entity_type"`
@@ -51,7 +53,7 @@ func (s ImportLogsTable) Schema() string {
 }
 
 func (s *ImportLogsTable) GetRuns(ctx context.Context, guildId uint64) ([]ImportRun, error) {
-	query := `SELECT run_id, date FROM import_logs WHERE "guild_id" = $1 AND log_type = 'RUN_START';`
+	query := `SELECT run_id, run_type date FROM import_logs WHERE "guild_id" = $1 AND log_type = 'RUN_START';`
 
 	var runs []ImportRun
 
@@ -62,7 +64,7 @@ func (s *ImportLogsTable) GetRuns(ctx context.Context, guildId uint64) ([]Import
 
 	for rows.Next() {
 		var mappingEntry ImportRun
-		if err := rows.Scan(&mappingEntry.RunId, &mappingEntry.Date); err != nil {
+		if err := rows.Scan(&mappingEntry.RunId, &mappingEntry.Date, &mappingEntry.RunType); err != nil {
 			return nil, err
 		}
 
@@ -82,7 +84,7 @@ func (s *ImportLogsTable) GetRuns(ctx context.Context, guildId uint64) ([]Import
 }
 
 func (s *ImportLogsTable) GetRunLogs(ctx context.Context, guildId uint64, runId int) ([]ImportLogs, error) {
-	query := `SELECT guild_id, log_type, run_id, run_log_id, entity_type, message, date FROM import_logs WHERE guild_id = $1 AND run_id = $2 ORDER BY run_log_id ASC;`
+	query := `SELECT guild_id, log_type, run_id, run_log_id, run_type, entity_type, message, date FROM import_logs WHERE guild_id = $1 AND run_id = $2 ORDER BY run_log_id ASC;`
 
 	var logs []ImportLogs
 
@@ -93,7 +95,7 @@ func (s *ImportLogsTable) GetRunLogs(ctx context.Context, guildId uint64, runId 
 
 	for rows.Next() {
 		var logEntry ImportLogs
-		if err := rows.Scan(&logEntry.GuildId, &logEntry.LogType, &logEntry.RunId, &logEntry.RunLogId, &logEntry.EntityType, &logEntry.Message, &logEntry.Date); err != nil {
+		if err := rows.Scan(&logEntry.GuildId, &logEntry.LogType, &logEntry.RunId, &logEntry.RunLogId, &logEntry.RunType, &logEntry.EntityType, &logEntry.Message, &logEntry.Date); err != nil {
 			return nil, err
 		}
 
@@ -103,29 +105,29 @@ func (s *ImportLogsTable) GetRunLogs(ctx context.Context, guildId uint64, runId 
 	return logs, nil
 }
 
-func (s *ImportLogsTable) CreateRun(ctx context.Context, guildId uint64) (int, error) {
+func (s *ImportLogsTable) CreateRun(ctx context.Context, guildId uint64, runType string) (int, error) {
 	runCount := 1
 	currentRuns, _ := s.GetRuns(ctx, guildId)
 
 	runCount += len(currentRuns)
 
-	_, err := s.Exec(ctx, importLogsSetRun, guildId, "RUN_START", runCount)
+	_, err := s.Exec(ctx, importLogsSetRun, guildId, "RUN_START", runCount, runType)
 	return runCount, err
 }
 
-func (s *ImportLogsTable) AddLog(ctx context.Context, guildId uint64, runId int, logType string, entityType string, message string) error {
-	return s.addLog(ctx, guildId, runId, logType, entityType, message, 1)
+func (s *ImportLogsTable) AddLog(ctx context.Context, guildId uint64, runId int, runType string, logType string, entityType string, message string) error {
+	return s.addLog(ctx, guildId, runId, runType, logType, entityType, message, 1)
 }
 
-func (s *ImportLogsTable) addLog(ctx context.Context, guildId uint64, runId int, logType string, entityType string, message string, try int) error {
-	_, err := s.Exec(ctx, importLogsSet, guildId, logType, runId, entityType, message)
+func (s *ImportLogsTable) addLog(ctx context.Context, guildId uint64, runId int, runType string, logType string, entityType string, message string, try int) error {
+	_, err := s.Exec(ctx, importLogsSet, guildId, logType, runId, runType, entityType, message)
 	if err != nil && strings.Contains(err.Error(), "duplicate key value violates unique constraint") {
 		// Try again
 		if try > 5 {
 			return err
 		}
 
-		return s.addLog(ctx, guildId, runId, logType, entityType, message, try+1)
+		return s.addLog(ctx, guildId, runId, runType, logType, entityType, message, try+1)
 	}
 	return err
 }
