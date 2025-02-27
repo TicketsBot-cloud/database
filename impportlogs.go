@@ -53,7 +53,7 @@ func (s ImportLogsTable) Schema() string {
 }
 
 func (s *ImportLogsTable) GetRuns(ctx context.Context, guildId uint64) ([]ImportRun, error) {
-	query := `SELECT run_id, run_type date FROM import_logs WHERE "guild_id" = $1 AND log_type = 'RUN_START';`
+	query := `SELECT run_id, run_type, date FROM import_logs WHERE "guild_id" = $1 AND log_type = 'RUN_START';`
 
 	var runs []ImportRun
 
