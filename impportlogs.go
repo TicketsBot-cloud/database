@@ -64,7 +64,7 @@ func (s *ImportLogsTable) GetRuns(ctx context.Context, guildId uint64) ([]Import
 
 	for rows.Next() {
 		var mappingEntry ImportRun
-		if err := rows.Scan(&mappingEntry.RunId, &mappingEntry.Date, &mappingEntry.RunType); err != nil {
+		if err := rows.Scan(&mappingEntry.RunId, &mappingEntry.RunType, &mappingEntry.Date); err != nil {
 			return nil, err
 		}
 
