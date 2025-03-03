@@ -71,8 +71,10 @@ func (s *ImportMappingTable) Set(ctx context.Context, guildId uint64, area strin
 func (s *ImportMappingTable) SetBulk(ctx context.Context, guildId uint64, area string, mappings map[int]int) error {
 	rows := make([][]interface{}, len(mappings))
 
+	i := 0
 	for sourceId, targetId := range mappings {
-		rows = append(rows, []interface{}{guildId, area, sourceId, targetId})
+		rows[i] = []interface{}{guildId, area, sourceId, targetId}
+		i++
 	}
 
 	_, err := s.CopyFrom(ctx, pgx.Identifier{"import_mapping"}, []string{"guild_id", "area", "source_id", "target_id"}, pgx.CopyFromRows(rows))
