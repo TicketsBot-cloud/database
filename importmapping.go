@@ -4,6 +4,7 @@ import (
 	"context"
 	_ "embed"
 
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -64,5 +65,17 @@ func (s *ImportMappingTable) GetMapping(ctx context.Context, guildId uint64) (ma
 
 func (s *ImportMappingTable) Set(ctx context.Context, guildId uint64, area string, sourceId, targetId int) error {
 	_, err := s.Exec(ctx, importMappingSet, guildId, area, sourceId, targetId)
+	return err
+}
+
+func (s *ImportMappingTable) SetBulk(ctx context.Context, guildId uint64, area string, mappings map[int]int) error {
+	rows := make([][]interface{}, len(mappings))
+
+	for sourceId, targetId := range mappings {
+		rows = append(rows, []interface{}{guildId, area, sourceId, targetId})
+	}
+
+	_, err := s.CopyFrom(ctx, pgx.Identifier{"import_mapping"}, []string{"guild_id", "area", "source_id", "target_id"}, pgx.CopyFromRows(rows))
+
 	return err
 }
