@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -93,6 +94,22 @@ ON CONFLICT("guild_id", "ticket_id") DO UPDATE SET "close_reason" = $3, "closed_
 `
 
 	_, err = c.Exec(ctx, query, guildId, ticketId, data.Reason, data.ClosedBy)
+	return
+}
+
+func (c *CloseMetadataTable) SetBulk(ctx context.Context, guildId uint64, data map[int]CloseMetadata) (err error) {
+	rows := make([][]interface{}, 0, len(data))
+
+	for i := range data {
+		rows = append(rows, []interface{}{
+			guildId,
+			i,
+			data[i].Reason,
+			data[i].ClosedBy,
+		})
+	}
+
+	_, err = c.CopyFrom(ctx, pgx.Identifier{"close_reason"}, []string{"guild_id", "ticket_id", "close_reason", "closed_by"}, pgx.CopyFromRows(rows))
 	return
 }
 
