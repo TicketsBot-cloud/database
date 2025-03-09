@@ -31,15 +31,17 @@ type Ticket struct {
 }
 
 type TicketQueryOptions struct {
-	Id      int       `json:"id"`
-	GuildId uint64    `json:"guild_id"`
-	UserIds []uint64  `json:"user_ids"`
-	Open    *bool     `json:"open"`
-	PanelId int       `json:"panel_id"`
-	Rating  int       `json:"rating"`
-	Order   OrderType `json:"order_type"`
-	Limit   int       `json:"limit"`
-	Offset  int       `json:"offset"`
+	Id          int       `json:"id"`
+	GuildId     uint64    `json:"guild_id"`
+	UserIds     []uint64  `json:"user_ids"`
+	Open        *bool     `json:"open"`
+	ClosedById  uint64    `json:"closed_by_id"`
+	ClaimedById uint64    `json:"claimed_by_id"`
+	PanelId     int       `json:"panel_id"`
+	Rating      int       `json:"rating"`
+	Order       OrderType `json:"order_type"`
+	Limit       int       `json:"limit"`
+	Offset      int       `json:"offset"`
 }
 
 type OrderType string
@@ -53,6 +55,8 @@ const (
 func (o TicketQueryOptions) HasWhereClause() bool {
 	return o.Id == 0 &&
 		o.GuildId == 0 &&
+		o.ClosedById == 0 &&
+		o.ClaimedById == 0 &&
 		len(o.UserIds) == 0 &&
 		o.Open == nil &&
 		o.Rating != 0
@@ -247,6 +251,14 @@ FROM tickets`
 		query += " INNER JOIN service_ratings ON tickets.guild_id = service_ratings.guild_id AND tickets.id = service_ratings.ticket_id "
 	}
 
+	if o.ClosedById != 0 {
+		query += " INNER JOIN close_reason ON tickets.guild_id = close_reason.guild_id AND tickets.id = close_reason.ticket_id "
+	}
+
+	if o.ClaimedById != 0 {
+		query += " INNER JOIN ticket_claims ON tickets.guild_id = ticket_claims.guild_id AND tickets.id = ticket_claims.ticket_id "
+	}
+
 	if !o.HasWhereClause() {
 		query += " WHERE "
 	}
@@ -266,6 +278,26 @@ FROM tickets`
 
 		args = append(args, o.GuildId)
 		query += fmt.Sprintf(`tickets.guild_id = $%d`, len(args))
+		needsAnd = true
+	}
+
+	if o.ClosedById != 0 {
+		if needsAnd {
+			query += " AND "
+		}
+
+		args = append(args, o.ClosedById)
+		query += fmt.Sprintf(`close_reason.closed_by = $%d`, len(args))
+		needsAnd = true
+	}
+
+	if o.ClaimedById != 0 {
+		if needsAnd {
+			query += " AND "
+		}
+
+		args = append(args, o.ClaimedById)
+		query += fmt.Sprintf(`ticket_claims.user_id = $%d`, len(args))
 		needsAnd = true
 	}
 
