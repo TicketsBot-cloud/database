@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
@@ -53,7 +54,8 @@ SELECT
 	panels.force_disabled,
 	panels.disabled,
 	panels.exit_survey_form_id,
-	panels.pending_category
+	panels.pending_category,
+	panels.delete_mentions
 FROM multi_panel_targets
 INNER JOIN panels
 ON panels.panel_id = multi_panel_targets.panel_id
