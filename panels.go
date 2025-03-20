@@ -492,7 +492,7 @@ INSERT INTO panels(
 	"pending_category",
 	"delete_mentions"
 )
-VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22. $23)
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
 ON CONFLICT("message_id") DO NOTHING
 RETURNING "panel_id";`
 
