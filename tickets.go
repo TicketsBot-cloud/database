@@ -92,6 +92,10 @@ CREATE TABLE IF NOT EXISTS tickets(
 	FOREIGN KEY("panel_id") REFERENCES panels("panel_id") ON DELETE SET NULL ON UPDATE CASCADE,
 	PRIMARY KEY("id", "guild_id")
 );
+CREATE TABLE guild_ticket_counters (
+    guild_id bigint PRIMARY KEY,
+    last_ticket_id integer NOT NULL DEFAULT 0
+);
 CREATE INDEX IF NOT EXISTS tickets_channel_id ON tickets("channel_id");
 CREATE INDEX IF NOT EXISTS tickets_panel_id ON tickets("panel_id");
 `
@@ -130,15 +134,37 @@ func (t *TicketTable) BulkImport(ctx context.Context, guildId uint64, tickets []
 }
 
 func (t *TicketTable) Create(ctx context.Context, guildId, userId uint64, isThread bool, panelId *int) (id int, err error) {
+	tx, err := t.Begin(ctx)
+	if err != nil {
+		return 0, err
+	}
+	defer tx.Rollback(ctx)
+
+	var ticketId int
+
+	if err := tx.QueryRow(ctx, `
+		INSERT INTO guild_ticket_counters (guild_id, last_ticket_id)
+		VALUES ($1, 1)
+		ON CONFLICT (guild_id) DO UPDATE 
+		SET last_ticket_id = guild_ticket_counters.last_ticket_id + 1
+		RETURNING last_ticket_id`, guildId).Scan(&ticketId); err != nil {
+		return 0, err
+	}
+
 	query := `
 INSERT INTO tickets("id", "guild_id", "user_id", "open", "open_time", "is_thread", "panel_id", "status")
 VALUES(
-       (SELECT COALESCE(MAX("id"), 0) + 1 FROM tickets WHERE "guild_id" = $1), 
-       $1, $2, true, NOW(), $3, $4, $5
+       $1, $2, $3, true, NOW(), $4, $5, $6
 )
 RETURNING "id";`
 
-	err = t.QueryRow(ctx, query, guildId, userId, isThread, panelId, model.TicketStatusOpen).Scan(&id)
+	if err := tx.QueryRow(ctx, query, ticketId, guildId, userId, isThread, panelId, model.TicketStatusOpen).Scan(&id); err != nil {
+		return 0, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return 0, err
+	}
 	return
 }
 
