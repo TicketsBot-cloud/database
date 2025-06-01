@@ -169,7 +169,11 @@ func (t *TagsTable) GetTagCount(ctx context.Context, guildId uint64) (count int,
 }
 
 func (t *TagsTable) GetContaining(ctx context.Context, guildId uint64, substring string, limit int) (tagIds []string, e error) {
-	query := `SELECT LOWER("tag_id") FROM tags WHERE "guild_id"=$1 AND "tag_id" LIKE '%' || $2 || '%' LIMIT $3;`
+	query := `
+	SELECT LOWER("tag_id") FROM tags 
+	WHERE "guild_id"=$1 AND "tag_id" LIKE '%' || $2 || '%' 
+	ORDER BY CASE WHEN "tag_id" LIKE $2 || '%' THEN 0 ELSE 1 END
+	LIMIT $3;`
 	rows, err := t.Query(ctx, query, guildId, substring, limit)
 	if err != nil && err != pgx.ErrNoRows {
 		e = err
