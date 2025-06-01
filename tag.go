@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"errors"
+
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -167,14 +168,35 @@ func (t *TagsTable) GetTagCount(ctx context.Context, guildId uint64) (count int,
 	return
 }
 
-func (t *TagsTable) GetStartingWith(ctx context.Context, guildId uint64, prefix string, limit int) (tagIds []string, e error) {
-	query := `SELECT LOWER("tag_id") FROM tags WHERE "guild_id"=$1 AND "tag_id" LIKE $2 || '%' LIMIT $3;`
-	rows, err := t.Query(ctx, query, guildId, prefix, limit)
-	defer rows.Close()
+func (t *TagsTable) GetContaining(ctx context.Context, guildId uint64, substring string, limit int) (tagIds []string, e error) {
+	query := `SELECT LOWER("tag_id") FROM tags WHERE "guild_id"=$1 AND "tag_id" LIKE '%' || $2 || '%' LIMIT $3;`
+	rows, err := t.Query(ctx, query, guildId, substring, limit)
 	if err != nil && err != pgx.ErrNoRows {
 		e = err
 		return
 	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+
+		tagIds = append(tagIds, id)
+	}
+
+	return
+}
+
+func (t *TagsTable) GetStartingWith(ctx context.Context, guildId uint64, prefix string, limit int) (tagIds []string, e error) {
+	query := `SELECT LOWER("tag_id") FROM tags WHERE "guild_id"=$1 AND "tag_id" LIKE $2 || '%' LIMIT $3;`
+	rows, err := t.Query(ctx, query, guildId, prefix, limit)
+	if err != nil && err != pgx.ErrNoRows {
+		e = err
+		return
+	}
+	defer rows.Close()
 
 	for rows.Next() {
 		var id string
