@@ -1158,3 +1158,16 @@ func (t *TicketTable) SetStatus(ctx context.Context, guildId uint64, ticketId in
 	_, err := t.Exec(ctx, query, guildId, ticketId, status)
 	return err
 }
+
+func (t *TicketTable) SeedTicketsCounter(ctx context.Context, guildId uint64) (err error) {
+	query := `INSERT INTO guild_ticket_counters (guild_id, last_ticket_id)
+SELECT guild_id, COALESCE(MAX(id), 0) as last_ticket_id
+FROM tickets
+WHERE guild_id = $1
+GROUP BY guild_id
+ON CONFLICT (guild_id) DO UPDATE
+SET last_ticket_id = EXCLUDED.last_ticket_id;`
+
+	_, err = t.Exec(ctx, query, guildId)
+	return
+}
