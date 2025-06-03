@@ -52,6 +52,28 @@ func (s ImportLogsTable) Schema() string {
 	return importLogsSchema
 }
 
+func (s *ImportLogsTable) GetFinishedRuns(ctx context.Context, guildId uint64) ([]ImportRun, error) {
+	query := `SELECT run_id, run_type, date FROM import_logs WHERE "guild_id" = $1 AND log_type = 'RUN_FINISH';`
+
+	var runs []ImportRun
+
+	rows, err := s.Query(ctx, query, guildId)
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		var mappingEntry ImportRun
+		if err := rows.Scan(&mappingEntry.RunId, &mappingEntry.RunType, &mappingEntry.Date); err != nil {
+			return nil, err
+		}
+
+		runs = append(runs, mappingEntry)
+	}
+
+	return runs, nil
+}
+
 func (s *ImportLogsTable) GetRuns(ctx context.Context, guildId uint64) ([]ImportRun, error) {
 	query := `SELECT run_id, run_type, date FROM import_logs WHERE "guild_id" = $1 AND log_type = 'RUN_START';`
 
