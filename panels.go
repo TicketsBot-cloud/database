@@ -11,8 +11,8 @@ import (
 // ALTER TABLE panels ADD COLUMN default_team bool NOT NULL DEFAULT 't';
 type Panel struct {
 	PanelId             int     `json:"panel_id"`
-	MessageId           uint64  `json:"message_id,string"`
-	ChannelId           uint64  `json:"channel_id,string"`
+	MessageId           *uint64 `json:"message_id,string"`
+	ChannelId           *uint64 `json:"channel_id,string"`
 	GuildId             uint64  `json:"guild_id,string"`
 	Title               string  `json:"title"`
 	Content             string  `json:"content"`
@@ -56,8 +56,8 @@ func (p PanelTable) Schema() string {
 	return `
 CREATE TABLE IF NOT EXISTS panels(
 	"panel_id" SERIAL NOT NULL UNIQUE,
-	"message_id" int8 NOT NULL UNIQUE,
-	"channel_id" int8 NOT NULL,
+	"message_id" int8 DEFAULT NULL UNIQUE,
+	"channel_id" int8 DEFAULT NULL,
 	"guild_id" int8 NOT NULL,
 	"title" varchar(255) NOT NULL,
 	"content" text NOT NULL,
@@ -598,7 +598,7 @@ UPDATE panels
 	return err
 }
 
-func (p *PanelTable) UpdateMessageId(ctx context.Context, panelId int, messageId uint64) (err error) {
+func (p *PanelTable) UpdateMessageId(ctx context.Context, panelId int, messageId *uint64) (err error) {
 	query := `
 UPDATE panels
 SET "message_id" = $1
@@ -606,6 +606,17 @@ WHERE "panel_id" = $2;
 `
 
 	_, err = p.Exec(ctx, query, messageId, panelId)
+	return
+}
+
+func (p *PanelTable) UpdateChannelId(ctx context.Context, panelId int, channelId *uint64) (err error) {
+	query := `
+UPDATE panels
+SET "channel_id" = $1
+WHERE "panel_id" = $2;
+`
+
+	_, err = p.Exec(ctx, query, channelId, panelId)
 	return
 }
 
