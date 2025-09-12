@@ -43,6 +43,7 @@ type Database struct {
 	FeedbackEnabled                *FeedbackEnabled
 	FirstResponseTime              *FirstResponseTime
 	FormInput                      *FormInputTable
+	FormInputOption                *FormInputOptionTable
 	Forms                          *FormsTable
 	GlobalBlacklist                *GlobalBlacklist
 	GuildLeaveTime                 *GuildLeaveTime
@@ -133,6 +134,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		FirstResponseTime:              newFirstResponseTime(pool),
 		FormInput:                      newFormInputTable(pool),
 		Forms:                          newFormsTable(pool),
+		FormInputOption:                newFormInputOptionTable(pool),
 		GlobalBlacklist:                newGlobalBlacklist(pool),
 		GuildLeaveTime:                 newGuildLeaveTime(pool),
 		GuildMetadata:                  newGuildMetadataTable(pool),
@@ -241,7 +243,8 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.SubscriptionSkus,    // depends on skus
 		d.FeedbackEnabled,
 		d.Forms,
-		d.FormInput,
+		d.FormInput,       // depends on forms
+		d.FormInputOption, // depends on form inputs
 		d.GlobalBlacklist,
 		d.GuildLeaveTime,
 		d.GuildMetadata,
