@@ -40,6 +40,7 @@ type Database struct {
 	Embeds                         *EmbedsTable
 	Entitlements                   *Entitlements
 	ExitSurveyResponses            *ExitSurveyResponses
+	Experiment                     *ExperimentTable
 	FeedbackEnabled                *FeedbackEnabled
 	FirstResponseTime              *FirstResponseTime
 	FormInput                      *FormInputTable
@@ -130,6 +131,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		Embeds:                         newEmbedsTable(pool),
 		Entitlements:                   newEntitlementsTable(pool),
 		ExitSurveyResponses:            newExitSurveyResponses(pool),
+		Experiment:                     newExperimentTable(pool),
 		FeedbackEnabled:                newFeedbackEnabled(pool),
 		FirstResponseTime:              newFirstResponseTime(pool),
 		FormInput:                      newFormInputTable(pool),
@@ -238,6 +240,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.Embeds,
 		d.EmbedFields, // depends on embeds
 		d.Entitlements,
+		d.Experiment,
 		d.DiscordEntitlements, // depends on entitlements
 		d.DiscordStoreSkus,    // depends on skus
 		d.SubscriptionSkus,    // depends on skus
