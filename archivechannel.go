@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -29,6 +30,23 @@ func (c *ArchiveChannel) Get(ctx context.Context, guildId uint64) (archiveChanne
 	query := `SELECT "channel_id" from archive_channel WHERE "guild_id" = $1;`
 
 	if err := c.QueryRow(ctx, query, guildId).Scan(&archiveChannel); err != nil && err != pgx.ErrNoRows {
+		e = err
+	}
+
+	return
+}
+
+func (c *ArchiveChannel) GetByPanel(ctx context.Context, guildId uint64, panelId int) (archiveChannel *uint64, e error) {
+	query := `
+	SELECT
+		COALESCE(p.transcript_channel_id, ac.channel_id)
+	FROM
+			panels p
+	JOIN archive_channel ac ON ac.guild_id = p.guild_id
+	WHERE p.panel_id = $1 AND p.guild_id = $2;
+`
+
+	if err := c.QueryRow(ctx, query, panelId, guildId).Scan(&archiveChannel); err != nil && err != pgx.ErrNoRows {
 		e = err
 	}
 
