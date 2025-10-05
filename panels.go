@@ -34,6 +34,7 @@ type Panel struct {
 	ExitSurveyFormId    *int    `json:"exit_survey_form_id"`
 	PendingCategory     *uint64 `json:"pending_category,string"`
 	DeleteMentions      bool    `json:"delete_mentions"`
+	TranscriptChannelId *uint64 `json:"transcript_channel_id,string,omitempty"`
 }
 
 type PanelWithWelcomeMessage struct {
@@ -79,6 +80,7 @@ CREATE TABLE IF NOT EXISTS panels(
 	"exit_survey_form_id" int DEFAULT NULL,
 	"pending_category" int8 DEFAULT NULL,
 	"delete_mentions" bool NOT NULL DEFAULT false,
+	"transcript_channel_id" int8 DEFAULT NULL,
 	FOREIGN KEY ("welcome_message") REFERENCES embeds("id") ON DELETE SET NULL,
 	FOREIGN KEY ("form_id") REFERENCES forms("form_id"),
 	FOREIGN KEY ("exit_survey_form_id") REFERENCES forms("form_id"),
@@ -117,7 +119,8 @@ SELECT
 	disabled,
 	exit_survey_form_id,
 	pending_category,
-	delete_mentions
+	delete_mentions,
+	transcript_channel_id
 FROM panels
 WHERE "message_id" = $1;
 `
@@ -156,7 +159,8 @@ SELECT
 	disabled,
 	exit_survey_form_id,
 	pending_category,
-	delete_mentions
+	delete_mentions,
+	transcript_channel_id
 FROM panels
 WHERE "panel_id" = $1;
 `
@@ -195,7 +199,8 @@ SELECT
 	disabled,
 	exit_survey_form_id,
 	pending_category,
-	delete_mentions
+	delete_mentions,
+	transcript_channel_id
 FROM panels
 WHERE "guild_id" = $1 AND "custom_id" = $2;
 `
@@ -237,7 +242,8 @@ SELECT
 	disabled,
 	exit_survey_form_id,
 	pending_category,
-	delete_mentions
+	delete_mentions,
+	transcript_channel_id
 FROM panels
 WHERE "guild_id" = $1 AND "form_id" = $2;
 `
@@ -279,7 +285,8 @@ SELECT
 	panels.disabled,
 	panels.exit_survey_form_id,
 	panels.pending_category,
-	panels.delete_mentions
+	panels.delete_mentions,
+	panels.transcript_channel_id
 FROM panels
 INNER JOIN forms
 ON forms.form_id = panels.form_id
@@ -302,7 +309,7 @@ func (p *PanelTable) GetByGuild(ctx context.Context, guildId uint64) (panels []P
 SELECT
 	panel_id,
 	message_id,
-	channel_id, 
+	channel_id,
 	guild_id,
 	title,
 	content,
@@ -323,7 +330,8 @@ SELECT
 	disabled,
 	exit_survey_form_id,
 	pending_category,
-	delete_mentions
+	delete_mentions,
+	transcript_channel_id
 FROM panels
 WHERE "guild_id" = $1
 ORDER BY "panel_id" ASC;`
@@ -351,7 +359,7 @@ func (p *PanelTable) GetByGuildWithWelcomeMessage(ctx context.Context, guildId u
 SELECT
 	panels.panel_id,
 	panels.message_id,
-	panels.channel_id, 
+	panels.channel_id,
 	panels.guild_id,
 	panels.title,
 	panels.content,
@@ -373,6 +381,7 @@ SELECT
 	panels.exit_survey_form_id,
 	panels.pending_category,
 	panels.delete_mentions,
+	panels.transcript_channel_id,
 	embeds.id,
 	embeds.guild_id,
 	embeds.title,
@@ -490,9 +499,10 @@ INSERT INTO panels(
 	"disabled",
     "exit_survey_form_id",
 	"pending_category",
-	"delete_mentions"
+	"delete_mentions",
+	"transcript_channel_id"
 )
-VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
 ON CONFLICT("message_id") DO NOTHING
 RETURNING "panel_id";`
 
@@ -520,6 +530,7 @@ RETURNING "panel_id";`
 		panel.ExitSurveyFormId,
 		panel.PendingCategory,
 		panel.DeleteMentions,
+		panel.TranscriptChannelId,
 	).Scan(&panelId)
 
 	return
@@ -564,7 +575,8 @@ UPDATE panels
 	    "disabled" = $20,
 	    "exit_survey_form_id" = $21,
 	    "pending_category" = $22,
-		"delete_mentions" = $23
+		"delete_mentions" = $23,
+		"transcript_channel_id" = $24
 	WHERE
 		"panel_id" = $1
 ;`
@@ -593,6 +605,7 @@ UPDATE panels
 		panel.ExitSurveyFormId,
 		panel.PendingCategory,
 		panel.DeleteMentions,
+		panel.TranscriptChannelId,
 	)
 
 	return err
@@ -708,5 +721,6 @@ func (p *Panel) fieldPtrs() []interface{} {
 		&p.ExitSurveyFormId,
 		&p.PendingCategory,
 		&p.DeleteMentions,
+		&p.TranscriptChannelId,
 	}
 }

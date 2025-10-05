@@ -55,7 +55,8 @@ SELECT
 	panels.disabled,
 	panels.exit_survey_form_id,
 	panels.pending_category,
-	panels.delete_mentions
+	panels.delete_mentions,
+	panels.transcript_channel_id
 FROM multi_panel_targets
 INNER JOIN panels
 ON panels.panel_id = multi_panel_targets.panel_id
@@ -135,7 +136,7 @@ WHERE multi_panel_targets.panel_id = $1;
 func (p *MultiPanelTargets) Insert(ctx context.Context, multiPanelId, panelId int) (err error) {
 	query := `
 INSERT INTO multi_panel_targets("multi_panel_id", "panel_id")
-VALUES ($1, $2) 
+VALUES ($1, $2)
 ON CONFLICT("multi_panel_id", "panel_id") DO NOTHING;
 `
 
