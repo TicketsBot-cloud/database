@@ -252,10 +252,10 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.SubscriptionSkus,    // depends on skus
 		d.FeedbackEnabled,
 		d.Forms,
-		d.FormInput,          // depends on forms
-		d.FormInputOption,    // depends on form inputs
-		d.FormInputApiConfig, // depends on form inputs
-		d.FormInputApiHeader, // depends on form input api config
+		d.FormInput,           // depends on forms
+		d.FormInputOption,     // depends on form inputs
+		d.FormInputApiConfig,  // depends on form inputs
+		d.FormInputApiHeaders, // depends on form input api config
 		d.GlobalBlacklist,
 		d.GuildLeaveTime,
 		d.GuildMetadata,
