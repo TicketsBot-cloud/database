@@ -173,6 +173,107 @@ WHERE "panel_id" = $1;
 	return
 }
 
+func (p *PanelTable) GetByIdWithWelcomeMessage(ctx context.Context, guildId uint64, panelId int) (panel *PanelWithWelcomeMessage, e error) {
+	query := `
+SELECT
+	panels.panel_id,
+	panels.message_id,
+	panels.channel_id,
+	panels.guild_id,
+	panels.title,
+	panels.content,
+	panels.colour,
+	panels.target_category,
+	panels.emoji_name,
+	panels.emoji_id,
+	panels.welcome_message,
+	panels.default_team,
+	panels.custom_id,
+	panels.image_url,
+	panels.thumbnail_url,
+	panels.button_style,
+	panels.button_label,
+	panels.form_id,
+	panels.naming_scheme,
+	panels.force_disabled,
+	panels.disabled,
+	panels.exit_survey_form_id,
+	panels.pending_category,
+	panels.delete_mentions,
+	embeds.id,
+	embeds.guild_id,
+	embeds.title,
+	embeds.description,
+	embeds.url,
+	embeds.colour,
+	embeds.author_name,
+	embeds.author_icon_url,
+	embeds.author_url,
+	embeds.image_url,
+	embeds.thumbnail_url,
+	embeds.footer_text,
+	embeds.footer_icon_url,
+	embeds.timestamp
+FROM panels
+LEFT JOIN embeds
+ON panels.welcome_message = embeds.id
+WHERE panels.guild_id = $1
+AND panels.panel_id = $2;`
+
+	rows, err := p.Query(ctx, query, guildId, panelId)
+	defer rows.Close()
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		var pan Panel
+		var embed CustomEmbed
+
+		// Can't scan missing values into non-nullable fields
+		var embedId *int
+		var embedGuildId *uint64
+		var embedColour *uint32
+
+		err := rows.Scan(append(pan.fieldPtrs(),
+			&embedId,
+			&embedGuildId,
+			&embed.Title,
+			&embed.Description,
+			&embed.Url,
+			&embedColour,
+			&embed.AuthorName,
+			&embed.AuthorIconUrl,
+			&embed.AuthorUrl,
+			&embed.ImageUrl,
+			&embed.ThumbnailUrl,
+			&embed.FooterText,
+			&embed.FooterIconUrl,
+			&embed.Timestamp,
+		)...)
+
+		if err != nil {
+			return nil, err
+		}
+
+		var embedPtr *CustomEmbed
+		if embedId != nil {
+			embed.Id = *embedId
+			embed.GuildId = *embedGuildId
+			embed.Colour = *embedColour
+
+			embedPtr = &embed
+		}
+
+		panel = &PanelWithWelcomeMessage{
+			Panel:          pan,
+			WelcomeMessage: embedPtr,
+		}
+	}
+
+	return
+}
+
 func (p *PanelTable) GetByCustomId(ctx context.Context, guildId uint64, customId string) (panel Panel, ok bool, e error) {
 	query := `
 SELECT
