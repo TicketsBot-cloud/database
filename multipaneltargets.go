@@ -56,7 +56,8 @@ SELECT
 	panels.exit_survey_form_id,
 	panels.pending_category,
 	panels.delete_mentions,
-	panels.transcript_channel_id
+	panels.transcript_channel_id,
+	panels.use_threads
 FROM multi_panel_targets
 INNER JOIN panels
 ON panels.panel_id = multi_panel_targets.panel_id
