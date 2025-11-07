@@ -15,6 +15,7 @@ type PanelSupportHours struct {
 	StartTime time.Time `json:"start_time"`
 	EndTime   time.Time `json:"end_time"`
 	Enabled   bool      `json:"enabled"`
+	Timezone  string    `json:"timezone"` // IANA timezone identifier (e.g., "America/New_York")
 }
 
 type PanelSupportHoursTable struct {
@@ -34,6 +35,7 @@ CREATE TABLE IF NOT EXISTS panel_support_hours (
     "start_time" TIME NOT NULL,
     "end_time" TIME NOT NULL,
     "enabled" BOOLEAN NOT NULL DEFAULT true,
+    "timezone" VARCHAR(50) NOT NULL DEFAULT 'UTC',
     FOREIGN KEY ("panel_id") REFERENCES panels("panel_id") ON DELETE CASCADE,
     UNIQUE("panel_id", "day_of_week")
 );
@@ -51,7 +53,8 @@ SELECT
     "day_of_week",
     "start_time",
     "end_time",
-    "enabled"
+    "enabled",
+    "timezone"
 FROM panel_support_hours
 WHERE "panel_id" = $1
 ORDER BY "day_of_week" ASC;`
@@ -72,6 +75,7 @@ ORDER BY "day_of_week" ASC;`
 			&sh.StartTime,
 			&sh.EndTime,
 			&sh.Enabled,
+			&sh.Timezone,
 		); err != nil {
 			return nil, err
 		}
@@ -89,13 +93,15 @@ INSERT INTO panel_support_hours (
     "day_of_week",
     "start_time",
     "end_time",
-    "enabled"
-) VALUES ($1, $2, $3, $4, $5)
+    "enabled",
+    "timezone"
+) VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT ("panel_id", "day_of_week")
 DO UPDATE SET
     "start_time" = EXCLUDED."start_time",
     "end_time" = EXCLUDED."end_time",
-    "enabled" = EXCLUDED."enabled"
+    "enabled" = EXCLUDED."enabled",
+    "timezone" = EXCLUDED."timezone"
 RETURNING "id";`
 
 	var id int
@@ -105,6 +111,7 @@ RETURNING "id";`
 		supportHours.StartTime,
 		supportHours.EndTime,
 		supportHours.Enabled,
+		supportHours.Timezone,
 	).Scan(&id)
 
 	return id, err
@@ -136,13 +143,15 @@ INSERT INTO panel_support_hours (
     "day_of_week",
     "start_time",
     "end_time",
-    "enabled"
-) VALUES ($1, $2, $3, $4, $5)
+    "enabled",
+    "timezone"
+) VALUES ($1, $2, $3, $4, $5, $6)
 ON CONFLICT ("panel_id", "day_of_week")
 DO UPDATE SET
     "start_time" = EXCLUDED."start_time",
     "end_time" = EXCLUDED."end_time",
-    "enabled" = EXCLUDED."enabled"
+    "enabled" = EXCLUDED."enabled",
+    "timezone" = EXCLUDED."timezone"
 RETURNING "id";`
 
 	var id int
@@ -152,6 +161,7 @@ RETURNING "id";`
 		supportHours.StartTime,
 		supportHours.EndTime,
 		supportHours.Enabled,
+		supportHours.Timezone,
 	).Scan(&id)
 
 	return id, err
@@ -171,11 +181,50 @@ func (p *PanelSupportHoursTable) DeleteByPanelIdWithTx(ctx context.Context, tx p
 	return err
 }
 
+// IsValidTimezone validates that a timezone is a valid IANA identifier
+func IsValidTimezone(tz string) bool {
+	_, err := time.LoadLocation(tz)
+	return err == nil
+}
+
+// GetCurrentTimeInTimezone gets the current time in a specific timezone
+// Returns the time string in HH:MM:SS format and the day of week
+func GetCurrentTimeInTimezone(tz string) (currentTime string, dayOfWeek int, err error) {
+	loc, err := time.LoadLocation(tz)
+	if err != nil {
+		return "", 0, err
+	}
+
+	now := time.Now().In(loc)
+	currentTime = now.Format("15:04:05")
+	dayOfWeek = int(now.Weekday())
+
+	return currentTime, dayOfWeek, nil
+}
+
 // IsActiveNow checks if the panel is currently within support hours
 func (p *PanelSupportHoursTable) IsActiveNow(ctx context.Context, panelId int) (bool, error) {
-	now := time.Now()
-	dayOfWeek := int(now.Weekday())
-	currentTime := now.Format("15:04:05")
+	// Get all support hours for this panel to retrieve timezone
+	hours, err := p.GetByPanelId(ctx, panelId)
+	if err != nil {
+		return false, err
+	}
+
+	if len(hours) == 0 {
+		// No support hours configured, panel is always active
+		return true, nil
+	}
+
+	// All hours for same panel share same timezone
+	timezone := hours[0].Timezone
+
+	// Get current time in the panel's timezone
+	currentTime, dayOfWeek, err := GetCurrentTimeInTimezone(timezone)
+	if err != nil {
+		// If timezone is invalid, fall back to UTC
+		currentTime = time.Now().Format("15:04:05")
+		dayOfWeek = int(time.Now().Weekday())
+	}
 
 	return p.IsActive(ctx, panelId, dayOfWeek, currentTime)
 }
