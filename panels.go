@@ -9,6 +9,7 @@ import (
 )
 
 // ALTER TABLE panels ADD COLUMN default_team bool NOT NULL DEFAULT 't';
+// ALTER TABLE panels ADD COLUMN use_threads bool NOT NULL DEFAULT false;
 type Panel struct {
 	PanelId             int     `json:"panel_id"`
 	MessageId           uint64  `json:"message_id,string"`
@@ -35,6 +36,7 @@ type Panel struct {
 	PendingCategory     *uint64 `json:"pending_category,string"`
 	DeleteMentions      bool    `json:"delete_mentions"`
 	TranscriptChannelId *uint64 `json:"transcript_channel_id,string,omitempty"`
+	UseThreads          bool    `json:"use_threads"`
 }
 
 type PanelWithWelcomeMessage struct {
@@ -81,6 +83,7 @@ CREATE TABLE IF NOT EXISTS panels(
 	"pending_category" int8 DEFAULT NULL,
 	"delete_mentions" bool NOT NULL DEFAULT false,
 	"transcript_channel_id" int8 DEFAULT NULL,
+	"use_threads" bool NOT NULL DEFAULT false,
 	FOREIGN KEY ("welcome_message") REFERENCES embeds("id") ON DELETE SET NULL,
 	FOREIGN KEY ("form_id") REFERENCES forms("form_id"),
 	FOREIGN KEY ("exit_survey_form_id") REFERENCES forms("form_id"),
@@ -120,7 +123,8 @@ SELECT
 	exit_survey_form_id,
 	pending_category,
 	delete_mentions,
-	transcript_channel_id
+	transcript_channel_id,
+	use_threads
 FROM panels
 WHERE "message_id" = $1;
 `
@@ -160,7 +164,8 @@ SELECT
 	exit_survey_form_id,
 	pending_category,
 	delete_mentions,
-	transcript_channel_id
+	transcript_channel_id,
+	use_threads
 FROM panels
 WHERE "panel_id" = $1;
 `
@@ -200,6 +205,8 @@ SELECT
 	panels.exit_survey_form_id,
 	panels.pending_category,
 	panels.delete_mentions,
+	panels.transcript_channel_id,
+	panels.use_threads,
 	embeds.id,
 	embeds.guild_id,
 	embeds.title,
@@ -301,7 +308,8 @@ SELECT
 	exit_survey_form_id,
 	pending_category,
 	delete_mentions,
-	transcript_channel_id
+	transcript_channel_id,
+	use_threads
 FROM panels
 WHERE "guild_id" = $1 AND "custom_id" = $2;
 `
@@ -344,7 +352,8 @@ SELECT
 	exit_survey_form_id,
 	pending_category,
 	delete_mentions,
-	transcript_channel_id
+	transcript_channel_id,
+	use_threads
 FROM panels
 WHERE "guild_id" = $1 AND "form_id" = $2;
 `
@@ -387,7 +396,8 @@ SELECT
 	panels.exit_survey_form_id,
 	panels.pending_category,
 	panels.delete_mentions,
-	panels.transcript_channel_id
+	panels.transcript_channel_id,
+	panels.use_threads
 FROM panels
 INNER JOIN forms
 ON forms.form_id = panels.form_id
@@ -432,7 +442,8 @@ SELECT
 	exit_survey_form_id,
 	pending_category,
 	delete_mentions,
-	transcript_channel_id
+	transcript_channel_id,
+	use_threads
 FROM panels
 WHERE "guild_id" = $1
 ORDER BY "panel_id" ASC;`
@@ -483,6 +494,7 @@ SELECT
 	panels.pending_category,
 	panels.delete_mentions,
 	panels.transcript_channel_id,
+	panels.use_threads,
 	embeds.id,
 	embeds.guild_id,
 	embeds.title,
@@ -601,9 +613,10 @@ INSERT INTO panels(
     "exit_survey_form_id",
 	"pending_category",
 	"delete_mentions",
-	"transcript_channel_id"
+	"transcript_channel_id",
+	"use_threads"
 )
-VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)
 ON CONFLICT("message_id") DO NOTHING
 RETURNING "panel_id";`
 
@@ -632,6 +645,7 @@ RETURNING "panel_id";`
 		panel.PendingCategory,
 		panel.DeleteMentions,
 		panel.TranscriptChannelId,
+		panel.UseThreads,
 	).Scan(&panelId)
 
 	return
@@ -677,7 +691,8 @@ UPDATE panels
 	    "exit_survey_form_id" = $21,
 	    "pending_category" = $22,
 		"delete_mentions" = $23,
-		"transcript_channel_id" = $24
+		"transcript_channel_id" = $24,
+		"use_threads" = $25
 	WHERE
 		"panel_id" = $1
 ;`
@@ -707,6 +722,7 @@ UPDATE panels
 		panel.PendingCategory,
 		panel.DeleteMentions,
 		panel.TranscriptChannelId,
+		panel.UseThreads,
 	)
 
 	return err
@@ -823,5 +839,6 @@ func (p *Panel) fieldPtrs() []interface{} {
 		&p.PendingCategory,
 		&p.DeleteMentions,
 		&p.TranscriptChannelId,
+		&p.UseThreads,
 	}
 }
