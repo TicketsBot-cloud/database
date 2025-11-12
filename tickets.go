@@ -426,9 +426,9 @@ WHERE "channel_id" = $1;`
 
 func (t *TicketTable) GetByChannelAndGuild(ctx context.Context, channelId, guildId uint64) (ticket Ticket, e error) {
 	query := `
-SELECT id, guild_id, channel_id, user_id, open, open_time, welcome_message_id, panel_id, has_transcript, close_time, is_thread, join_message_id, notes_thread_id
+SELECT id, guild_id, channel_id, user_id, open, open_time, welcome_message_id, panel_id, has_transcript, close_time, is_thread, join_message_id, notes_thread_id, status
 FROM tickets
-WHERE "channel_id" = $1 AND "guild_id" = $2;`
+WHERE ("channel_id" = $1 OR "notes_thread_id" = $1) AND "guild_id" = $2;`
 
 	if err := t.QueryRow(ctx, query, channelId, guildId).Scan(
 		&ticket.Id,
@@ -444,6 +444,7 @@ WHERE "channel_id" = $1 AND "guild_id" = $2;`
 		&ticket.IsThread,
 		&ticket.JoinMessageId,
 		&ticket.NotesThreadId,
+		&ticket.Status,
 	); err != nil && err != pgx.ErrNoRows {
 		e = err
 	}
