@@ -21,9 +21,11 @@ func (p MultiPanelTargets) Schema() string {
 CREATE TABLE IF NOT EXISTS multi_panel_targets(
 	"multi_panel_id" int4 NOT NULL,
 	"panel_id" int NOT NULL,
+	"position" int NOT NULL DEFAULT 0,
 	FOREIGN KEY("multi_panel_id") REFERENCES multi_panels("id") ON DELETE CASCADE,
 	FOREIGN KEY ("panel_id") REFERENCES panels("panel_id") ON DELETE CASCADE,
-	PRIMARY KEY("multi_panel_id", "panel_id")
+	PRIMARY KEY("multi_panel_id", "panel_id"),
+	UNIQUE("multi_panel_id", "position")
 );
 CREATE INDEX IF NOT EXISTS multi_panel_targets_multi_panel_id ON multi_panel_targets("multi_panel_id");
 `
@@ -61,7 +63,8 @@ SELECT
 FROM multi_panel_targets
 INNER JOIN panels
 ON panels.panel_id = multi_panel_targets.panel_id
-WHERE "multi_panel_id" = $1;`
+WHERE "multi_panel_id" = $1
+ORDER BY multi_panel_targets.position ASC;`
 
 	rows, err := p.Query(ctx, query, multiPanelId)
 	defer rows.Close()
@@ -134,14 +137,14 @@ WHERE multi_panel_targets.panel_id = $1;
 	return multiPanels, nil
 }
 
-func (p *MultiPanelTargets) Insert(ctx context.Context, multiPanelId, panelId int) (err error) {
+func (p *MultiPanelTargets) Insert(ctx context.Context, multiPanelId, panelId, position int) (err error) {
 	query := `
-INSERT INTO multi_panel_targets("multi_panel_id", "panel_id")
-VALUES ($1, $2)
-ON CONFLICT("multi_panel_id", "panel_id") DO NOTHING;
+INSERT INTO multi_panel_targets("multi_panel_id", "panel_id", "position")
+VALUES ($1, $2, $3)
+ON CONFLICT("multi_panel_id", "panel_id") DO UPDATE SET "position" = EXCLUDED."position";
 `
 
-	_, err = p.Exec(ctx, query, multiPanelId, panelId)
+	_, err = p.Exec(ctx, query, multiPanelId, panelId, position)
 	return
 }
 
