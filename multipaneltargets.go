@@ -16,12 +16,24 @@ func newMultiPanelTargets(db *pgxpool.Pool) *MultiPanelTargets {
 	}
 }
 
+type PanelWithCustomization struct {
+	Panel
+	CustomLabel     *string `json:"custom_label"`
+	Description     *string `json:"description"`
+	CustomEmojiName *string `json:"custom_emoji_name"`
+	CustomEmojiId   *uint64 `json:"custom_emoji_id,string"`
+}
+
 func (p MultiPanelTargets) Schema() string {
 	return `
 CREATE TABLE IF NOT EXISTS multi_panel_targets(
 	"multi_panel_id" int4 NOT NULL,
 	"panel_id" int NOT NULL,
 	"position" int NOT NULL DEFAULT 0,
+	"custom_label" VARCHAR(80),
+	"description" VARCHAR(100),
+	"custom_emoji_name" VARCHAR(32),
+	"custom_emoji_id" int8,
 	FOREIGN KEY("multi_panel_id") REFERENCES multi_panels("id") ON DELETE CASCADE,
 	FOREIGN KEY ("panel_id") REFERENCES panels("panel_id") ON DELETE CASCADE,
 	PRIMARY KEY("multi_panel_id", "panel_id"),
@@ -31,7 +43,7 @@ CREATE INDEX IF NOT EXISTS multi_panel_targets_multi_panel_id ON multi_panel_tar
 `
 }
 
-func (p *MultiPanelTargets) GetPanels(ctx context.Context, multiPanelId int) (panels []Panel, e error) {
+func (p *MultiPanelTargets) GetPanels(ctx context.Context, multiPanelId int) (panels []PanelWithCustomization, e error) {
 	query := `
 SELECT
 	panels.panel_id,
@@ -59,7 +71,11 @@ SELECT
 	panels.pending_category,
 	panels.delete_mentions,
 	panels.transcript_channel_id,
-	panels.use_threads
+	panels.use_threads,
+	multi_panel_targets.custom_label,
+	multi_panel_targets.description,
+	multi_panel_targets.custom_emoji_name,
+	multi_panel_targets.custom_emoji_id
 FROM multi_panel_targets
 INNER JOIN panels
 ON panels.panel_id = multi_panel_targets.panel_id
@@ -74,12 +90,22 @@ ORDER BY multi_panel_targets.position ASC;`
 	}
 
 	for rows.Next() {
-		var panel Panel
-		if err := rows.Scan(panel.fieldPtrs()...); err != nil {
+		var pwc PanelWithCustomization
+		var customLabel, description, customEmojiName *string
+		var customEmojiId *uint64
+
+		fieldPtrs := append(pwc.Panel.fieldPtrs(), &customLabel, &description, &customEmojiName, &customEmojiId)
+
+		if err := rows.Scan(fieldPtrs...); err != nil {
 			return nil, err
 		}
 
-		panels = append(panels, panel)
+		pwc.CustomLabel = customLabel
+		pwc.Description = description
+		pwc.CustomEmojiName = customEmojiName
+		pwc.CustomEmojiId = customEmojiId
+
+		panels = append(panels, pwc)
 	}
 
 	return
@@ -137,14 +163,14 @@ WHERE multi_panel_targets.panel_id = $1;
 	return multiPanels, nil
 }
 
-func (p *MultiPanelTargets) Insert(ctx context.Context, multiPanelId, panelId, position int) (err error) {
+func (p *MultiPanelTargets) Insert(ctx context.Context, multiPanelId, panelId, position int, customLabel, description, customEmojiName *string, customEmojiId *uint64) (err error) {
 	query := `
-INSERT INTO multi_panel_targets("multi_panel_id", "panel_id", "position")
-VALUES ($1, $2, $3)
-ON CONFLICT("multi_panel_id", "panel_id") DO UPDATE SET "position" = EXCLUDED."position";
+INSERT INTO multi_panel_targets("multi_panel_id", "panel_id", "position", "custom_label", "description", "custom_emoji_name", "custom_emoji_id")
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT("multi_panel_id", "panel_id") DO UPDATE SET "position" = EXCLUDED."position", "custom_label" = EXCLUDED."custom_label", "description" = EXCLUDED."description", "custom_emoji_name" = EXCLUDED."custom_emoji_name", "custom_emoji_id" = EXCLUDED."custom_emoji_id";
 `
 
-	_, err = p.Exec(ctx, query, multiPanelId, panelId, position)
+	_, err = p.Exec(ctx, query, multiPanelId, panelId, position, customLabel, description, customEmojiName, customEmojiId)
 	return
 }
 
