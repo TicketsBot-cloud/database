@@ -67,7 +67,6 @@ func (d *Database) PurgeGuildData(ctx context.Context, guildId uint64, logger *z
 		"close_confirmation",
 		"custom_colours",
 		"feedback_enabled",
-		"guild_leave_time",
 		"guild_metadata",
 		"import_logs",
 		"import_mapping",
