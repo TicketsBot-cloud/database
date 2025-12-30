@@ -59,7 +59,8 @@ SELECT
 	panels.pending_category,
 	panels.delete_mentions,
 	panels.transcript_channel_id,
-	panels.use_threads
+	panels.use_threads,
+	panels.ticket_notification_channel
 FROM multi_panel_targets
 INNER JOIN panels
 ON panels.panel_id = multi_panel_targets.panel_id
