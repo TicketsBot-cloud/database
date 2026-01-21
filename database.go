@@ -48,6 +48,7 @@ type Database struct {
 	Forms                          *FormsTable
 	FormInputApiConfig             *FormInputApiConfigTable
 	FormInputApiHeaders            *FormInputApiHeaderTable
+	GdprLogs                       *GDPRLogsTable
 	GlobalBlacklist                *GlobalBlacklist
 	GuildLeaveTime                 *GuildLeaveTime
 	GuildMetadata                  *GuildMetadataTable
@@ -142,6 +143,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		FormInputApiConfig:             newFormInputApiConfigTable(pool),
 		FormInputApiHeaders:            newFormInputApiHeaderTable(pool),
 		FormInputOption:                newFormInputOptionTable(pool),
+		GdprLogs:                       newGDPRLogs(pool),
 		GlobalBlacklist:                newGlobalBlacklist(pool),
 		GuildLeaveTime:                 newGuildLeaveTime(pool),
 		GuildMetadata:                  newGuildMetadataTable(pool),
@@ -256,6 +258,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.FormInputOption,     // depends on form inputs
 		d.FormInputApiConfig,  // depends on form inputs
 		d.FormInputApiHeaders, // depends on form input api config
+		d.GdprLogs,
 		d.GlobalBlacklist,
 		d.GuildLeaveTime,
 		d.GuildMetadata,

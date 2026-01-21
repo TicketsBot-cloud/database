@@ -64,3 +64,9 @@ func (b *GlobalBlacklist) Delete(ctx context.Context, userId uint64) (err error)
 	_, err = b.Exec(ctx, `DELETE FROM global_blacklist WHERE "user_id" = $1;`, userId)
 	return
 }
+
+func (b *GlobalBlacklist) GetReason(ctx context.Context, userId uint64) (reason string, err error) {
+	query := `SELECT COALESCE(reason, '') FROM global_blacklist WHERE "user_id"=$1;`
+	err = b.QueryRow(ctx, query, userId).Scan(&reason)
+	return
+}

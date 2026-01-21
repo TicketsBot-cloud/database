@@ -67,3 +67,9 @@ func (b *ServerBlacklist) Delete(ctx context.Context, guildId uint64) (err error
 	_, err = b.Exec(ctx, `DELETE FROM server_blacklist WHERE "guild_id" = $1;`, guildId)
 	return
 }
+
+func (b *ServerBlacklist) GetReason(ctx context.Context, guildId uint64) (reason string, err error) {
+	query := `SELECT COALESCE(reason, '') FROM server_blacklist WHERE "guild_id"=$1;`
+	err = b.QueryRow(ctx, query, guildId).Scan(&reason)
+	return
+}

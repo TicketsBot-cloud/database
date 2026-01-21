@@ -255,6 +255,21 @@ func (t *TicketTable) GetByOptions(ctx context.Context, options TicketQueryOptio
 	return
 }
 
+func (t *TicketTable) CountByOptions(ctx context.Context, options TicketQueryOptions) (int, error) {
+	query, args, err := options.BuildCountQuery()
+	if err != nil {
+		return 0, err
+	}
+
+	var count int
+	err = t.QueryRow(ctx, query, args...).Scan(&count)
+	if err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 func (o TicketQueryOptions) BuildQuery() (query string, args []interface{}, _err error) {
 	query = `
 SELECT tickets.id,
@@ -391,6 +406,112 @@ FROM tickets`
 	return
 }
 
+func (o TicketQueryOptions) BuildCountQuery() (query string, args []interface{}, _err error) {
+	query = "SELECT COUNT(*) FROM tickets"
+
+	if o.Rating != 0 {
+		query += " INNER JOIN service_ratings ON tickets.guild_id = service_ratings.guild_id AND tickets.id = service_ratings.ticket_id "
+	}
+
+	if o.ClosedById != 0 {
+		query += " INNER JOIN close_reason ON tickets.guild_id = close_reason.guild_id AND tickets.id = close_reason.ticket_id "
+	}
+
+	if o.ClaimedById != 0 {
+		query += " INNER JOIN ticket_claims ON tickets.guild_id = ticket_claims.guild_id AND tickets.id = ticket_claims.ticket_id "
+	}
+
+	if !o.HasWhereClause() {
+		query += " WHERE "
+	}
+
+	var needsAnd bool
+
+	if o.Id != 0 {
+		args = append(args, o.Id)
+		query += fmt.Sprintf(`tickets.id = $%d`, len(args))
+		needsAnd = true
+	}
+
+	if o.GuildId != 0 {
+		if needsAnd {
+			query += " AND "
+		}
+
+		args = append(args, o.GuildId)
+		query += fmt.Sprintf(`tickets.guild_id = $%d`, len(args))
+		needsAnd = true
+	}
+
+	if o.ClosedById != 0 {
+		if needsAnd {
+			query += " AND "
+		}
+
+		args = append(args, o.ClosedById)
+		query += fmt.Sprintf(`close_reason.closed_by = $%d`, len(args))
+		needsAnd = true
+	}
+
+	if o.ClaimedById != 0 {
+		if needsAnd {
+			query += " AND "
+		}
+
+		args = append(args, o.ClaimedById)
+		query += fmt.Sprintf(`ticket_claims.user_id = $%d`, len(args))
+		needsAnd = true
+	}
+
+	if len(o.UserIds) > 0 {
+		if needsAnd {
+			query += " AND "
+		}
+
+		userIdArray := &pgtype.Int8Array{}
+		if err := userIdArray.Set(o.UserIds); err != nil {
+			return "", nil, err
+		}
+
+		args = append(args, userIdArray)
+		query += fmt.Sprintf(`tickets.user_id = ANY($%d)`, len(args))
+		needsAnd = true
+	}
+
+	if o.Open != nil {
+		if needsAnd {
+			query += " AND "
+		}
+
+		args = append(args, *o.Open)
+		query += fmt.Sprintf(`tickets.open = $%d`, len(args))
+		needsAnd = true
+	}
+
+	if o.PanelId > 0 {
+		if needsAnd {
+			query += " AND "
+		}
+
+		args = append(args, o.PanelId)
+		query += fmt.Sprintf(`tickets.panel_id = $%d`, len(args))
+		needsAnd = true
+	}
+
+	if o.Rating > 0 {
+		if needsAnd {
+			query += " AND "
+		}
+
+		args = append(args, o.Rating)
+		query += fmt.Sprintf(`service_ratings.rating = $%d`, len(args))
+		needsAnd = true
+	}
+
+	query += ";"
+	return
+}
+
 func (t *TicketTable) GetByChannel(ctx context.Context, channelId uint64) (Ticket, bool, error) {
 	query := `
 SELECT id, guild_id, channel_id, user_id, open, open_time, welcome_message_id, panel_id, has_transcript, close_time, is_thread, join_message_id, notes_thread_id, status
@@ -426,9 +547,9 @@ WHERE "channel_id" = $1;`
 
 func (t *TicketTable) GetByChannelAndGuild(ctx context.Context, channelId, guildId uint64) (ticket Ticket, e error) {
 	query := `
-SELECT id, guild_id, channel_id, user_id, open, open_time, welcome_message_id, panel_id, has_transcript, close_time, is_thread, join_message_id, notes_thread_id
+SELECT id, guild_id, channel_id, user_id, open, open_time, welcome_message_id, panel_id, has_transcript, close_time, is_thread, join_message_id, notes_thread_id, status
 FROM tickets
-WHERE "channel_id" = $1 AND "guild_id" = $2;`
+WHERE ("channel_id" = $1 OR "notes_thread_id" = $1) AND "guild_id" = $2;`
 
 	if err := t.QueryRow(ctx, query, channelId, guildId).Scan(
 		&ticket.Id,
@@ -444,6 +565,7 @@ WHERE "channel_id" = $1 AND "guild_id" = $2;`
 		&ticket.IsThread,
 		&ticket.JoinMessageId,
 		&ticket.NotesThreadId,
+		&ticket.Status,
 	); err != nil && err != pgx.ErrNoRows {
 		e = err
 	}

@@ -8,33 +8,34 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
-// ALTER TABLE panels ADD COLUMN default_team bool NOT NULL DEFAULT 't';
 type Panel struct {
-	PanelId             int     `json:"panel_id"`
-	MessageId           uint64  `json:"message_id,string"`
-	ChannelId           uint64  `json:"channel_id,string"`
-	GuildId             uint64  `json:"guild_id,string"`
-	Title               string  `json:"title"`
-	Content             string  `json:"content"`
-	Colour              int32   `json:"colour"`
-	TargetCategory      uint64  `json:"category_id,string"`
-	EmojiName           *string `json:"emoji_name"`
-	EmojiId             *uint64 `json:"emoji_id,string"`
-	WelcomeMessageEmbed *int    `json:"welcome_message_embed"`
-	WithDefaultTeam     bool    `json:"default_team"`
-	CustomId            string  `json:"custom_id"`
-	ImageUrl            *string `json:"image_url,omitempty"`
-	ThumbnailUrl        *string `json:"thumbnail_url,omitempty"`
-	ButtonStyle         int     `json:"button_style"`
-	ButtonLabel         string  `json:"button_label"`
-	FormId              *int    `json:"form_id"`
-	NamingScheme        *string `json:"naming_scheme"`
-	ForceDisabled       bool    `json:"force_disabled"`
-	Disabled            bool    `json:"disabled"`
-	ExitSurveyFormId    *int    `json:"exit_survey_form_id"`
-	PendingCategory     *uint64 `json:"pending_category,string"`
-	DeleteMentions      bool    `json:"delete_mentions"`
-	TranscriptChannelId *uint64 `json:"transcript_channel_id,string,omitempty"`
+	PanelId                    int     `json:"panel_id"`
+	MessageId                  uint64  `json:"message_id,string"`
+	ChannelId                  uint64  `json:"channel_id,string"`
+	GuildId                    uint64  `json:"guild_id,string"`
+	Title                      string  `json:"title"`
+	Content                    string  `json:"content"`
+	Colour                     int32   `json:"colour"`
+	TargetCategory             uint64  `json:"category_id,string"`
+	EmojiName                  *string `json:"emoji_name"`
+	EmojiId                    *uint64 `json:"emoji_id,string"`
+	WelcomeMessageEmbed        *int    `json:"welcome_message_embed"`
+	WithDefaultTeam            bool    `json:"default_team"`
+	CustomId                   string  `json:"custom_id"`
+	ImageUrl                   *string `json:"image_url,omitempty"`
+	ThumbnailUrl               *string `json:"thumbnail_url,omitempty"`
+	ButtonStyle                int     `json:"button_style"`
+	ButtonLabel                string  `json:"button_label"`
+	FormId                     *int    `json:"form_id"`
+	NamingScheme               *string `json:"naming_scheme"`
+	ForceDisabled              bool    `json:"force_disabled"`
+	Disabled                   bool    `json:"disabled"`
+	ExitSurveyFormId           *int    `json:"exit_survey_form_id"`
+	PendingCategory            *uint64 `json:"pending_category,string"`
+	DeleteMentions             bool    `json:"delete_mentions"`
+	TranscriptChannelId        *uint64 `json:"transcript_channel_id,string,omitempty"`
+	UseThreads                 bool    `json:"use_threads"`
+	TicketNotificationChannel  *uint64 `json:"ticket_notification_channel,string,omitempty"`
 }
 
 type PanelWithWelcomeMessage struct {
@@ -81,6 +82,8 @@ CREATE TABLE IF NOT EXISTS panels(
 	"pending_category" int8 DEFAULT NULL,
 	"delete_mentions" bool NOT NULL DEFAULT false,
 	"transcript_channel_id" int8 DEFAULT NULL,
+	"use_threads" bool NOT NULL DEFAULT false,
+	"ticket_notification_channel" int8 DEFAULT NULL,
 	FOREIGN KEY ("welcome_message") REFERENCES embeds("id") ON DELETE SET NULL,
 	FOREIGN KEY ("form_id") REFERENCES forms("form_id"),
 	FOREIGN KEY ("exit_survey_form_id") REFERENCES forms("form_id"),
@@ -120,7 +123,9 @@ SELECT
 	exit_survey_form_id,
 	pending_category,
 	delete_mentions,
-	transcript_channel_id
+	transcript_channel_id,
+	use_threads,
+	ticket_notification_channel
 FROM panels
 WHERE "message_id" = $1;
 `
@@ -160,7 +165,9 @@ SELECT
 	exit_survey_form_id,
 	pending_category,
 	delete_mentions,
-	transcript_channel_id
+	transcript_channel_id,
+	use_threads,
+	ticket_notification_channel
 FROM panels
 WHERE "panel_id" = $1;
 `
@@ -200,6 +207,9 @@ SELECT
 	panels.exit_survey_form_id,
 	panels.pending_category,
 	panels.delete_mentions,
+	panels.transcript_channel_id,
+	panels.use_threads,
+	panels.ticket_notification_channel,
 	embeds.id,
 	embeds.guild_id,
 	embeds.title,
@@ -301,7 +311,9 @@ SELECT
 	exit_survey_form_id,
 	pending_category,
 	delete_mentions,
-	transcript_channel_id
+	transcript_channel_id,
+	use_threads,
+	ticket_notification_channel
 FROM panels
 WHERE "guild_id" = $1 AND "custom_id" = $2;
 `
@@ -344,7 +356,9 @@ SELECT
 	exit_survey_form_id,
 	pending_category,
 	delete_mentions,
-	transcript_channel_id
+	transcript_channel_id,
+	use_threads,
+	ticket_notification_channel
 FROM panels
 WHERE "guild_id" = $1 AND "form_id" = $2;
 `
@@ -387,7 +401,9 @@ SELECT
 	panels.exit_survey_form_id,
 	panels.pending_category,
 	panels.delete_mentions,
-	panels.transcript_channel_id
+	panels.transcript_channel_id,
+	panels.use_threads,
+	panels.ticket_notification_channel
 FROM panels
 INNER JOIN forms
 ON forms.form_id = panels.form_id
@@ -432,7 +448,9 @@ SELECT
 	exit_survey_form_id,
 	pending_category,
 	delete_mentions,
-	transcript_channel_id
+	transcript_channel_id,
+	use_threads,
+	ticket_notification_channel
 FROM panels
 WHERE "guild_id" = $1
 ORDER BY "panel_id" ASC;`
@@ -483,6 +501,8 @@ SELECT
 	panels.pending_category,
 	panels.delete_mentions,
 	panels.transcript_channel_id,
+	panels.use_threads,
+	panels.ticket_notification_channel,
 	embeds.id,
 	embeds.guild_id,
 	embeds.title,
@@ -601,9 +621,11 @@ INSERT INTO panels(
     "exit_survey_form_id",
 	"pending_category",
 	"delete_mentions",
-	"transcript_channel_id"
+	"transcript_channel_id",
+	"use_threads",
+	"ticket_notification_channel"
 )
-VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26)
 ON CONFLICT("message_id") DO NOTHING
 RETURNING "panel_id";`
 
@@ -632,6 +654,8 @@ RETURNING "panel_id";`
 		panel.PendingCategory,
 		panel.DeleteMentions,
 		panel.TranscriptChannelId,
+		panel.UseThreads,
+		panel.TicketNotificationChannel,
 	).Scan(&panelId)
 
 	return
@@ -677,7 +701,9 @@ UPDATE panels
 	    "exit_survey_form_id" = $21,
 	    "pending_category" = $22,
 		"delete_mentions" = $23,
-		"transcript_channel_id" = $24
+		"transcript_channel_id" = $24,
+		"use_threads" = $25,
+		"ticket_notification_channel" = $26
 	WHERE
 		"panel_id" = $1
 ;`
@@ -707,6 +733,8 @@ UPDATE panels
 		panel.PendingCategory,
 		panel.DeleteMentions,
 		panel.TranscriptChannelId,
+		panel.UseThreads,
+		panel.TicketNotificationChannel,
 	)
 
 	return err
@@ -823,5 +851,7 @@ func (p *Panel) fieldPtrs() []interface{} {
 		&p.PendingCategory,
 		&p.DeleteMentions,
 		&p.TranscriptChannelId,
+		&p.UseThreads,
+		&p.TicketNotificationChannel,
 	}
 }
