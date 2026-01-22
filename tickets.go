@@ -31,17 +31,18 @@ type Ticket struct {
 }
 
 type TicketQueryOptions struct {
-	Id          int       `json:"id"`
-	GuildId     uint64    `json:"guild_id"`
-	UserIds     []uint64  `json:"user_ids"`
-	Open        *bool     `json:"open"`
-	ClosedById  uint64    `json:"closed_by_id"`
-	ClaimedById uint64    `json:"claimed_by_id"`
-	PanelId     int       `json:"panel_id"`
-	Rating      int       `json:"rating"`
-	Order       OrderType `json:"order_type"`
-	Limit       int       `json:"limit"`
-	Offset      int       `json:"offset"`
+	Id               int       `json:"id"`
+	GuildId          uint64    `json:"guild_id"`
+	UserIds          []uint64  `json:"user_ids"`
+	Open             *bool     `json:"open"`
+	ClosedById       uint64    `json:"closed_by_id"`
+	ClaimedById      uint64    `json:"claimed_by_id"`
+	FilterByPanelIds []int     `json:"filter_by_panel_ids"`
+	PanelId          int       `json:"panel_id"`
+	Rating           int       `json:"rating"`
+	Order            OrderType `json:"order_type"`
+	Limit            int       `json:"limit"`
+	Offset           int       `json:"offset"`
 }
 
 type OrderType string
@@ -57,6 +58,7 @@ func (o TicketQueryOptions) HasWhereClause() bool {
 		o.GuildId == 0 &&
 		o.ClosedById == 0 &&
 		o.ClaimedById == 0 &&
+		len(o.FilterByPanelIds) == 0 &&
 		len(o.UserIds) == 0 &&
 		o.Open == nil &&
 		o.Rating != 0
@@ -342,6 +344,20 @@ FROM tickets`
 		needsAnd = true
 	}
 
+	if len(o.FilterByPanelIds) > 0 {
+		if needsAnd {
+			query += " AND "
+		}
+
+		panelIdArray := &pgtype.Int4Array{}
+		if err := panelIdArray.Set(o.FilterByPanelIds); err != nil {
+			return "", nil, err
+		}
+		args = append(args, panelIdArray)
+		query += fmt.Sprintf(`tickets.panel_id = ANY($%d)`, len(args))
+		needsAnd = true
+	}
+
 	if len(o.UserIds) > 0 {
 		if needsAnd {
 			query += " AND "
@@ -460,6 +476,20 @@ func (o TicketQueryOptions) BuildCountQuery() (query string, args []interface{},
 
 		args = append(args, o.ClaimedById)
 		query += fmt.Sprintf(`ticket_claims.user_id = $%d`, len(args))
+		needsAnd = true
+	}
+
+	if len(o.FilterByPanelIds) > 0 {
+		if needsAnd {
+			query += " AND "
+		}
+
+		panelIdArray := &pgtype.Int4Array{}
+		if err := panelIdArray.Set(o.FilterByPanelIds); err != nil {
+			return "", nil, err
+		}
+		args = append(args, panelIdArray)
+		query += fmt.Sprintf(`tickets.panel_id = ANY($%d)`, len(args))
 		needsAnd = true
 	}
 
