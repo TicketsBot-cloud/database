@@ -53,20 +53,6 @@ func (m *TicketMembers) Get(ctx context.Context, guildId uint64, ticketId int) (
 	return
 }
 
-func (m *TicketMembers) ImportBulk(ctx context.Context, guildId uint64, ticketUsers map[int][]uint64) (err error) {
-	rows := make([][]interface{}, 0)
-
-	for ticketId, users := range ticketUsers {
-		for _, userId := range users {
-			rows = append(rows, []interface{}{guildId, ticketId, userId})
-		}
-	}
-
-	_, err = m.CopyFrom(ctx, pgx.Identifier{"ticket_members"}, []string{"guild_id", "ticket_id", "user_id"}, pgx.CopyFromRows(rows))
-
-	return
-}
-
 func (m *TicketMembers) Add(ctx context.Context, guildId uint64, ticketId int, userId uint64) (err error) {
 	query := `INSERT INTO ticket_members("guild_id", "ticket_id", "user_id") VALUES($1, $2, $3) ON CONFLICT("guild_id", "ticket_id", "user_id") DO NOTHING;`
 	_, err = m.Exec(ctx, query, guildId, ticketId, userId)
