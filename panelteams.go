@@ -2,6 +2,8 @@ package database
 
 import (
 	"context"
+
+	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -125,4 +127,34 @@ func (p *PanelTeamsTable) ReplaceWithTx(ctx context.Context, tx pgx.Tx, panelId 
 	}
 
 	return nil
+}
+
+func (p *PanelTeamsTable) GetPanelsByTeams(ctx context.Context, teamIds []int) ([]int, error) {
+	if len(teamIds) == 0 {
+		return nil, nil
+	}
+
+	query := `SELECT DISTINCT "panel_id" FROM panel_teams WHERE "team_id" = ANY($1);`
+
+	teamIdArray := &pgtype.Int4Array{}
+	if err := teamIdArray.Set(teamIds); err != nil {
+		return nil, err
+	}
+
+	rows, err := p.Query(ctx, query, teamIdArray)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var panelIds []int
+	for rows.Next() {
+		var panelId int
+		if err := rows.Scan(&panelId); err != nil {
+			return nil, err
+		}
+		panelIds = append(panelIds, panelId)
+	}
+
+	return panelIds, nil
 }
