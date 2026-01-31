@@ -711,6 +711,20 @@ WHERE "user_id" = $1 AND "open" = true AND "guild_id" = $2;`
 	return count, nil
 }
 
+func (t *TicketTable) GetOpenCountByUserAndPanel(ctx context.Context, guildId, userId uint64, panelId int) (int, error) {
+	query := `
+SELECT COUNT(id)
+FROM tickets
+WHERE "user_id" = $1 AND "open" = true AND "guild_id" = $2 AND "panel_id" = $3;`
+
+	var count int
+	if err := t.QueryRow(ctx, query, userId, guildId, panelId).Scan(&count); err != nil {
+		return 0, err
+	}
+
+	return count, nil
+}
+
 func (t *TicketTable) GetClosedByUserPrefixed(ctx context.Context, guildId, userId uint64, prefix string, limit int) (tickets []Ticket, e error) {
 	query := `
 SELECT id, guild_id, channel_id, user_id, open, open_time, welcome_message_id, panel_id, has_transcript, close_time, is_thread, join_message_id, notes_thread_id, status
