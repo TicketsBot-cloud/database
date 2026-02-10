@@ -14,6 +14,7 @@ type Database struct {
 	pool                           *pgxpool.Pool
 	ActiveLanguage                 *ActiveLanguage
 	ArchiveChannel                 *ArchiveChannel
+	AuditLog                       *AuditLogTable
 	ArchiveMessages                *ArchiveMessages
 	AutoClose                      *AutoCloseTable
 	AutoCloseExclude               *AutoCloseExclude
@@ -109,6 +110,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		pool:                           pool,
 		ActiveLanguage:                 newActiveLanguage(pool),
 		ArchiveChannel:                 newArchiveChannel(pool),
+		AuditLog:                       newAuditLogTable(pool),
 		ArchiveMessages:                newArchiveMessages(pool),
 		AutoClose:                      newAutoCloseTable(pool),
 		AutoCloseExclude:               newAutoCloseExclude(pool),
@@ -318,6 +320,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.WhitelabelGuilds,
 		d.WhitelabelStatuses,
 		d.WhitelabelUsers,
+		d.AuditLog,
 	)
 }
 
