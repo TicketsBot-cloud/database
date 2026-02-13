@@ -73,6 +73,7 @@ SELECT
 	panels.transcript_channel_id,
 	panels.use_threads,
 	panels.ticket_notification_channel,
+	panels.cooldown_seconds,
 	multi_panel_targets.custom_label,
 	multi_panel_targets.description,
 	multi_panel_targets.custom_emoji_name,
