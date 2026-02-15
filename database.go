@@ -14,6 +14,7 @@ type Database struct {
 	pool                           *pgxpool.Pool
 	ActiveLanguage                 *ActiveLanguage
 	ArchiveChannel                 *ArchiveChannel
+	AuditLog                       *AuditLogTable
 	ArchiveMessages                *ArchiveMessages
 	AutoClose                      *AutoCloseTable
 	AutoCloseExclude               *AutoCloseExclude
@@ -65,6 +66,7 @@ type Database struct {
 	PanelAccessControlRules        *PanelAccessControlRules
 	PanelRoleMentions              *PanelRoleMentions
 	PanelSupportHours              *PanelSupportHoursTable
+	PanelSupportHoursSettings      *PanelSupportHoursSettingsTable
 	PanelTeams                     *PanelTeamsTable
 	PanelUserMention               *PanelUserMention
 	PanelHereMention               *PanelHereMention
@@ -109,6 +111,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		pool:                           pool,
 		ActiveLanguage:                 newActiveLanguage(pool),
 		ArchiveChannel:                 newArchiveChannel(pool),
+		AuditLog:                       newAuditLogTable(pool),
 		ArchiveMessages:                newArchiveMessages(pool),
 		AutoClose:                      newAutoCloseTable(pool),
 		AutoCloseExclude:               newAutoCloseExclude(pool),
@@ -160,6 +163,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		PanelAccessControlRules:        newPanelAccessControlRules(pool),
 		PanelRoleMentions:              newPanelRoleMentions(pool),
 		PanelSupportHours:              newPanelSupportHoursTable(pool),
+		PanelSupportHoursSettings:      newPanelSupportHoursSettingsTable(pool),
 		PanelTeams:                     newPanelTeamsTable(pool),
 		PanelUserMention:               newPanelUserMention(pool),
 		PanelHereMention:               newPanelHereMention(pool),
@@ -274,7 +278,8 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.PanelAccessControlRules, // must be created after panels table
 		d.MultiPanelTargets,       // must be created after panels table
 		d.PanelRoleMentions,
-		d.PanelSupportHours, // must be created after panels table
+		d.PanelSupportHours,         // must be created after panels table
+		d.PanelSupportHoursSettings, // must be created after panels table
 		d.PanelUserMention,
 		d.PanelHereMention,
 		d.PatreonEntitlements,
@@ -318,6 +323,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.WhitelabelGuilds,
 		d.WhitelabelStatuses,
 		d.WhitelabelUsers,
+		d.AuditLog,
 	)
 }
 

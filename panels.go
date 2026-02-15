@@ -36,6 +36,7 @@ type Panel struct {
 	TranscriptChannelId        *uint64 `json:"transcript_channel_id,string,omitempty"`
 	UseThreads                 bool    `json:"use_threads"`
 	TicketNotificationChannel  *uint64 `json:"ticket_notification_channel,string,omitempty"`
+	CooldownSeconds            int     `json:"cooldown_seconds"`
 	TicketLimit                *uint8  `json:"ticket_limit,omitempty"`
 }
 
@@ -85,6 +86,7 @@ CREATE TABLE IF NOT EXISTS panels(
 	"transcript_channel_id" int8 DEFAULT NULL,
 	"use_threads" bool NOT NULL DEFAULT false,
 	"ticket_notification_channel" int8 DEFAULT NULL,
+	"cooldown_seconds" int NOT NULL DEFAULT 0,
 	"ticket_limit" int2 DEFAULT NULL,
 	FOREIGN KEY ("welcome_message") REFERENCES embeds("id") ON DELETE SET NULL,
 	FOREIGN KEY ("form_id") REFERENCES forms("form_id"),
@@ -128,6 +130,7 @@ SELECT
 	transcript_channel_id,
 	use_threads,
 	ticket_notification_channel,
+	cooldown_seconds,
 	ticket_limit
 FROM panels
 WHERE "message_id" = $1;
@@ -171,6 +174,7 @@ SELECT
 	transcript_channel_id,
 	use_threads,
 	ticket_notification_channel,
+	cooldown_seconds,
 	ticket_limit
 FROM panels
 WHERE "panel_id" = $1;
@@ -214,6 +218,7 @@ SELECT
 	panels.transcript_channel_id,
 	panels.use_threads,
 	panels.ticket_notification_channel,
+	panels.cooldown_seconds,
 	panels.ticket_limit,
 	embeds.id,
 	embeds.guild_id,
@@ -319,6 +324,7 @@ SELECT
 	transcript_channel_id,
 	use_threads,
 	ticket_notification_channel,
+	cooldown_seconds,
 	ticket_limit
 FROM panels
 WHERE "guild_id" = $1 AND "custom_id" = $2;
@@ -365,6 +371,7 @@ SELECT
 	transcript_channel_id,
 	use_threads,
 	ticket_notification_channel,
+	cooldown_seconds,
 	ticket_limit
 FROM panels
 WHERE "guild_id" = $1 AND "form_id" = $2;
@@ -411,6 +418,7 @@ SELECT
 	panels.transcript_channel_id,
 	panels.use_threads,
 	panels.ticket_notification_channel,
+	panels.cooldown_seconds,
 	panels.ticket_limit
 FROM panels
 INNER JOIN forms
@@ -459,6 +467,7 @@ SELECT
 	transcript_channel_id,
 	use_threads,
 	ticket_notification_channel,
+	cooldown_seconds,
 	ticket_limit
 FROM panels
 WHERE "guild_id" = $1
@@ -512,6 +521,7 @@ SELECT
 	panels.transcript_channel_id,
 	panels.use_threads,
 	panels.ticket_notification_channel,
+	panels.cooldown_seconds,
 	panels.ticket_limit,
 	embeds.id,
 	embeds.guild_id,
@@ -634,9 +644,10 @@ INSERT INTO panels(
 	"transcript_channel_id",
 	"use_threads",
 	"ticket_notification_channel",
+	"cooldown_seconds",
 	"ticket_limit"
 )
-VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28)
 ON CONFLICT("message_id") DO NOTHING
 RETURNING "panel_id";`
 
@@ -667,6 +678,7 @@ RETURNING "panel_id";`
 		panel.TranscriptChannelId,
 		panel.UseThreads,
 		panel.TicketNotificationChannel,
+		panel.CooldownSeconds,
 		panel.TicketLimit,
 	).Scan(&panelId)
 
@@ -716,7 +728,8 @@ UPDATE panels
 		"transcript_channel_id" = $24,
 		"use_threads" = $25,
 		"ticket_notification_channel" = $26,
-		"ticket_limit" = $27
+		"cooldown_seconds" = $27,
+		"ticket_limit" = $28
 	WHERE
 		"panel_id" = $1
 ;`
@@ -748,6 +761,7 @@ UPDATE panels
 		panel.TranscriptChannelId,
 		panel.UseThreads,
 		panel.TicketNotificationChannel,
+		panel.CooldownSeconds,
 		panel.TicketLimit,
 	)
 
@@ -867,6 +881,7 @@ func (p *Panel) fieldPtrs() []interface{} {
 		&p.TranscriptChannelId,
 		&p.UseThreads,
 		&p.TicketNotificationChannel,
+		&p.CooldownSeconds,
 		&p.TicketLimit,
 	}
 }
