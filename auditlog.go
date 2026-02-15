@@ -18,7 +18,8 @@ const (
 	AuditActionPanelCreate AuditActionType = 10
 	AuditActionPanelUpdate AuditActionType = 11
 	AuditActionPanelDelete AuditActionType = 12
-	AuditActionPanelResend AuditActionType = 13
+	AuditActionPanelResend         AuditActionType = 13
+	AuditActionPanelResetCooldowns AuditActionType = 14
 
 	AuditActionMultiPanelCreate AuditActionType = 20
 	AuditActionMultiPanelUpdate AuditActionType = 21
