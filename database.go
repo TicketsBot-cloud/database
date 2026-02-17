@@ -53,8 +53,6 @@ type Database struct {
 	GlobalBlacklist                *GlobalBlacklist
 	GuildLeaveTime                 *GuildLeaveTime
 	GuildMetadata                  *GuildMetadataTable
-	ImportLogs                     *ImportLogsTable
-	ImportMappingTable             *ImportMappingTable
 	LegacyPremiumEntitlementGuilds *LegacyPremiumEntitlementGuilds
 	LegacyPremiumEntitlements      *LegacyPremiumEntitlements
 	MultiPanels                    *MultiPanelTable
@@ -150,8 +148,6 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		GlobalBlacklist:                newGlobalBlacklist(pool),
 		GuildLeaveTime:                 newGuildLeaveTime(pool),
 		GuildMetadata:                  newGuildMetadataTable(pool),
-		ImportLogs:                     newImportLogs(pool),
-		ImportMappingTable:             newImportMapping(pool),
 		LegacyPremiumEntitlementGuilds: newLegacyPremiumEntitlementGuildsTable(pool),
 		LegacyPremiumEntitlements:      newLegacyPremiumEntitlement(pool),
 		MultiPanels:                    newMultiMultiPanelTable(pool),
@@ -266,8 +262,6 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.GlobalBlacklist,
 		d.GuildLeaveTime,
 		d.GuildMetadata,
-		d.ImportLogs,
-		d.ImportMappingTable,
 		d.LegacyPremiumEntitlements,
 		d.LegacyPremiumEntitlementGuilds,
 		d.MultiPanels,
