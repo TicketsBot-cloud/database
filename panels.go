@@ -38,6 +38,7 @@ type Panel struct {
 	TicketNotificationChannel  *uint64 `json:"ticket_notification_channel,string,omitempty"`
 	CooldownSeconds            int     `json:"cooldown_seconds"`
 	TicketLimit                *uint8  `json:"ticket_limit,omitempty"`
+	HideClaimButton            bool    `json:"hide_claim_button"`
 	HideCloseButton            bool    `json:"hide_close_button"`
 	HideCloseWithReasonButton  bool    `json:"hide_close_with_reason_button"`
 }
@@ -90,6 +91,7 @@ CREATE TABLE IF NOT EXISTS panels(
 	"ticket_notification_channel" int8 DEFAULT NULL,
 	"cooldown_seconds" int NOT NULL DEFAULT 0,
 	"ticket_limit" int2 DEFAULT NULL,
+	"hide_claim_button" bool NOT NULL DEFAULT false,
 	"hide_close_button" bool NOT NULL DEFAULT false,
 	"hide_close_with_reason_button" bool NOT NULL DEFAULT false,
 	FOREIGN KEY ("welcome_message") REFERENCES embeds("id") ON DELETE SET NULL,
@@ -136,6 +138,7 @@ SELECT
 	ticket_notification_channel,
 	cooldown_seconds,
 	ticket_limit,
+	hide_claim_button,
 	hide_close_button,
 	hide_close_with_reason_button
 FROM panels
@@ -182,6 +185,7 @@ SELECT
 	ticket_notification_channel,
 	cooldown_seconds,
 	ticket_limit,
+	hide_claim_button,
 	hide_close_button,
 	hide_close_with_reason_button
 FROM panels
@@ -228,6 +232,7 @@ SELECT
 	panels.ticket_notification_channel,
 	panels.cooldown_seconds,
 	panels.ticket_limit,
+	panels.hide_claim_button,
 	panels.hide_close_button,
 	panels.hide_close_with_reason_button,
 	embeds.id,
@@ -336,6 +341,7 @@ SELECT
 	ticket_notification_channel,
 	cooldown_seconds,
 	ticket_limit,
+	hide_claim_button,
 	hide_close_button,
 	hide_close_with_reason_button
 FROM panels
@@ -385,6 +391,7 @@ SELECT
 	ticket_notification_channel,
 	cooldown_seconds,
 	ticket_limit,
+	hide_claim_button,
 	hide_close_button,
 	hide_close_with_reason_button
 FROM panels
@@ -434,6 +441,7 @@ SELECT
 	panels.ticket_notification_channel,
 	panels.cooldown_seconds,
 	panels.ticket_limit,
+	panels.hide_claim_button,
 	panels.hide_close_button,
 	panels.hide_close_with_reason_button
 FROM panels
@@ -485,6 +493,7 @@ SELECT
 	ticket_notification_channel,
 	cooldown_seconds,
 	ticket_limit,
+	hide_claim_button,
 	hide_close_button,
 	hide_close_with_reason_button
 FROM panels
@@ -541,6 +550,7 @@ SELECT
 	panels.ticket_notification_channel,
 	panels.cooldown_seconds,
 	panels.ticket_limit,
+	panels.hide_claim_button,
 	panels.hide_close_button,
 	panels.hide_close_with_reason_button,
 	embeds.id,
@@ -666,10 +676,11 @@ INSERT INTO panels(
 	"ticket_notification_channel",
 	"cooldown_seconds",
 	"ticket_limit",
+	"hide_claim_button",
 	"hide_close_button",
 	"hide_close_with_reason_button"
 )
-VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30)
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31)
 ON CONFLICT("message_id") DO NOTHING
 RETURNING "panel_id";`
 
@@ -702,6 +713,7 @@ RETURNING "panel_id";`
 		panel.TicketNotificationChannel,
 		panel.CooldownSeconds,
 		panel.TicketLimit,
+		panel.HideClaimButton,
 		panel.HideCloseButton,
 		panel.HideCloseWithReasonButton,
 	).Scan(&panelId)
@@ -754,8 +766,9 @@ UPDATE panels
 		"ticket_notification_channel" = $26,
 		"cooldown_seconds" = $27,
 		"ticket_limit" = $28,
-		"hide_close_button" = $29,
-		"hide_close_with_reason_button" = $30
+		"hide_claim_button" = $29,
+		"hide_close_button" = $30,
+		"hide_close_with_reason_button" = $31
 	WHERE
 		"panel_id" = $1
 ;`
@@ -789,6 +802,7 @@ UPDATE panels
 		panel.TicketNotificationChannel,
 		panel.CooldownSeconds,
 		panel.TicketLimit,
+		panel.HideClaimButton,
 		panel.HideCloseButton,
 		panel.HideCloseWithReasonButton,
 	)
@@ -911,6 +925,7 @@ func (p *Panel) fieldPtrs() []interface{} {
 		&p.TicketNotificationChannel,
 		&p.CooldownSeconds,
 		&p.TicketLimit,
+		&p.HideClaimButton,
 		&p.HideCloseButton,
 		&p.HideCloseWithReasonButton,
 	}
