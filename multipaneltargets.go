@@ -75,6 +75,8 @@ SELECT
 	panels.ticket_notification_channel,
 	panels.cooldown_seconds,
 	panels.ticket_limit,
+	panels.hide_close_button,
+	panels.hide_close_with_reason_button,
 	multi_panel_targets.custom_label,
 	multi_panel_targets.description,
 	multi_panel_targets.custom_emoji_name,
