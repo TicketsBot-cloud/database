@@ -21,6 +21,8 @@ type Settings struct {
 	OverflowCategoryId          *uint64 `json:"overflow_category_id,string"` // If overflow_enabled and nil, use root
 	ExitSurveyFormId            *uint64 `json:"exit_survey_form_id,string"`
 	AnonymiseDashboardResponses bool    `json:"anonymise_dashboard_responses"`
+	HideCloseButton             bool    `json:"hide_close_button"`
+	HideCloseWithReasonButton   bool    `json:"hide_close_with_reason_button"`
 }
 
 func defaultSettings() Settings {
@@ -37,6 +39,8 @@ func defaultSettings() Settings {
 		OverflowEnabled:            false,
 		OverflowCategoryId:         nil,
 		ExitSurveyFormId:           nil,
+		HideCloseButton:            false,
+		HideCloseWithReasonButton:  false,
 	}
 }
 
@@ -67,6 +71,8 @@ CREATE TABLE IF NOT EXISTS settings(
 	"overflow_category_id" int8 DEFAULT NULL,
 	"exit_survey_form_id" int4 DEFAULT NULL,
 	"anonymise_dashboard_responses" bool DEFAULT 'f',
+	"hide_close_button" bool DEFAULT 'f',
+	"hide_close_with_reason_button" bool DEFAULT 'f',
 	FOREIGN KEY("context_menu_panel") REFERENCES panels("panel_id") ON DELETE SET NULL,
 	FOREIGN KEY("exit_survey_form_id") REFERENCES forms("form_id") ON DELETE SET NULL,
 	PRIMARY KEY("guild_id"),
@@ -89,7 +95,9 @@ SELECT
     "thread_archive_duration",
 	"overflow_enabled",
 	"overflow_category_id",
-	"anonymise_dashboard_responses"
+	"anonymise_dashboard_responses",
+	"hide_close_button",
+	"hide_close_with_reason_button"
 FROM settings
 WHERE "guild_id" = $1;
 `
@@ -108,6 +116,8 @@ WHERE "guild_id" = $1;
 		&settings.OverflowEnabled,
 		&settings.OverflowCategoryId,
 		&settings.AnonymiseDashboardResponses,
+		&settings.HideCloseButton,
+		&settings.HideCloseWithReasonButton,
 	)
 
 	if err == nil {
@@ -134,9 +144,11 @@ INSERT INTO settings(
     "thread_archive_duration",
 	"overflow_enabled",
 	"overflow_category_id",
-	"anonymise_dashboard_responses"
+	"anonymise_dashboard_responses",
+	"hide_close_button",
+	"hide_close_with_reason_button"
 )
-VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 ON CONFLICT("guild_id")
 DO UPDATE SET
 	"hide_claim_button" = $2,
@@ -150,7 +162,9 @@ DO UPDATE SET
     "thread_archive_duration" = $10,
 	"overflow_enabled" = $11,
 	"overflow_category_id" = $12,
-	"anonymise_dashboard_responses" = $13
+	"anonymise_dashboard_responses" = $13,
+	"hide_close_button" = $14,
+	"hide_close_with_reason_button" = $15
 ;
 `
 
@@ -168,6 +182,8 @@ DO UPDATE SET
 		settings.OverflowEnabled,
 		settings.OverflowCategoryId,
 		settings.AnonymiseDashboardResponses,
+		settings.HideCloseButton,
+		settings.HideCloseWithReasonButton,
 	)
 
 	return
