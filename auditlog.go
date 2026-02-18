@@ -51,9 +51,10 @@ const (
 	AuditActionBlacklistRemoveUser AuditActionType = 81
 	AuditActionBlacklistRemoveRole AuditActionType = 82
 
-	AuditActionTicketSendMessage AuditActionType = 90
-	AuditActionTicketSendTag     AuditActionType = 91
-	AuditActionTicketClose       AuditActionType = 92
+	AuditActionTicketSendMessage       AuditActionType = 90
+	AuditActionTicketSendTag           AuditActionType = 91
+	AuditActionTicketClose             AuditActionType = 92
+	AuditActionTicketCloseReasonUpdate AuditActionType = 93
 
 	AuditActionGuildIntegrationActivate   AuditActionType = 100
 	AuditActionGuildIntegrationUpdate     AuditActionType = 101
