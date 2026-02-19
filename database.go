@@ -35,7 +35,7 @@ type Database struct {
 	CustomIntegrationSecrets       *CustomIntegrationSecretsTable
 	CustomColours                  *CustomColours
 	DashboardUsers                 *DashboardUsersTable
-	DmMessages                     *DmMessages
+	ArchiveDmMessages              *ArchiveDmMessages
 	DiscordEntitlements            *DiscordEntitlements
 	DiscordStoreSkus               *DiscordStoreSkus
 	EmbedFields                    *EmbedFieldsTable
@@ -133,7 +133,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		CustomIntegrationSecrets:       newCustomIntegrationSecretsTable(pool),
 		CustomColours:                  newCustomColours(pool),
 		DashboardUsers:                 newDashboardUsersTable(pool),
-		DmMessages:                     newDmMessages(pool),
+		ArchiveDmMessages:              newArchiveDmMessages(pool),
 		DiscordEntitlements:            newDiscordEntitlementsTable(pool),
 		DiscordStoreSkus:               newDiscordStoreSkusTable(pool),
 		EmbedFields:                    newEmbedFieldsTable(pool),
@@ -309,7 +309,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.ServiceRatings,      // Must be created after Tickets table
 		d.ExitSurveyResponses, // Must be created after Tickets table
 		d.ArchiveMessages,     // Must be created after Tickets table
-		d.DmMessages,          // Must be created after Tickets table
+		d.ArchiveDmMessages,          // Must be created after Tickets table
 		d.CategoryUpdateQueue, // Must be created after Tickets table
 		d.FirstResponseTime,
 		d.TicketMembers,
