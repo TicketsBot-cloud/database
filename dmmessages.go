@@ -23,13 +23,13 @@ func newDmMessages(db *pgxpool.Pool) *DmMessages {
 }
 
 var (
-	//go:embed sql/dm_messages/schema.sql
+	//go:embed sql/archive_dm_messages/schema.sql
 	dmMessagesSchema string
 
-	//go:embed sql/dm_messages/insert.sql
+	//go:embed sql/archive_dm_messages/insert.sql
 	dmMessagesInsert string
 
-	//go:embed sql/dm_messages/get.sql
+	//go:embed sql/archive_dm_messages/get.sql
 	dmMessagesGet string
 )
 

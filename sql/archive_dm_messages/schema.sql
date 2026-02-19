@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS dm_messages (
+CREATE TABLE IF NOT EXISTS archive_dm_messages (
     guild_id int8 NOT NULL,
     ticket_id int4 NOT NULL,
     message_id int8 NOT NULL,
