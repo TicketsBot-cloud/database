@@ -309,7 +309,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.ServiceRatings,      // Must be created after Tickets table
 		d.ExitSurveyResponses, // Must be created after Tickets table
 		d.ArchiveMessages,     // Must be created after Tickets table
-		d.ArchiveDmMessages,          // Must be created after Tickets table
+		d.ArchiveDmMessages,   // Must be created after Tickets table
 		d.CategoryUpdateQueue, // Must be created after Tickets table
 		d.FirstResponseTime,
 		d.TicketMembers,
