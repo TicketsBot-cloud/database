@@ -15,9 +15,9 @@ type AuditActionType int16
 const (
 	AuditActionSettingsUpdate AuditActionType = 1
 
-	AuditActionPanelCreate AuditActionType = 10
-	AuditActionPanelUpdate AuditActionType = 11
-	AuditActionPanelDelete AuditActionType = 12
+	AuditActionPanelCreate         AuditActionType = 10
+	AuditActionPanelUpdate         AuditActionType = 11
+	AuditActionPanelDelete         AuditActionType = 12
 	AuditActionPanelResend         AuditActionType = 13
 	AuditActionPanelResetCooldowns AuditActionType = 14
 
@@ -63,6 +63,12 @@ const (
 
 	AuditActionPremiumSetActiveGuilds AuditActionType = 120
 
+	AuditActionTicketLabelCreate   AuditActionType = 130
+	AuditActionTicketLabelUpdate   AuditActionType = 131
+	AuditActionTicketLabelDelete   AuditActionType = 132
+	AuditActionTicketLabelAssign   AuditActionType = 135
+	AuditActionTicketLabelUnassign AuditActionType = 136
+
 	AuditActionUserIntegrationCreate    AuditActionType = 200
 	AuditActionUserIntegrationUpdate    AuditActionType = 201
 	AuditActionUserIntegrationDelete    AuditActionType = 202
@@ -81,24 +87,26 @@ const (
 type AuditResourceType int16
 
 const (
-	AuditResourceSettings         AuditResourceType = 1
-	AuditResourcePanel            AuditResourceType = 2
-	AuditResourceMultiPanel       AuditResourceType = 3
-	AuditResourceSupportHours     AuditResourceType = 4
-	AuditResourceForm             AuditResourceType = 5
-	AuditResourceFormInput        AuditResourceType = 6
-	AuditResourceTag              AuditResourceType = 7
-	AuditResourceTeam             AuditResourceType = 8
-	AuditResourceTeamMember       AuditResourceType = 9
-	AuditResourceStaffOverride    AuditResourceType = 10
-	AuditResourceBlacklist        AuditResourceType = 11
-	AuditResourceTicket           AuditResourceType = 12
-	AuditResourceGuildIntegration AuditResourceType = 13
-	AuditResourceImport           AuditResourceType = 14
-	AuditResourcePremium          AuditResourceType = 15
-	AuditResourceUserIntegration  AuditResourceType = 16
-	AuditResourceWhitelabel       AuditResourceType = 17
-	AuditResourceBotStaff         AuditResourceType = 18
+	AuditResourceSettings              AuditResourceType = 1
+	AuditResourcePanel                 AuditResourceType = 2
+	AuditResourceMultiPanel            AuditResourceType = 3
+	AuditResourceSupportHours          AuditResourceType = 4
+	AuditResourceForm                  AuditResourceType = 5
+	AuditResourceFormInput             AuditResourceType = 6
+	AuditResourceTag                   AuditResourceType = 7
+	AuditResourceTeam                  AuditResourceType = 8
+	AuditResourceTeamMember            AuditResourceType = 9
+	AuditResourceStaffOverride         AuditResourceType = 10
+	AuditResourceBlacklist             AuditResourceType = 11
+	AuditResourceTicket                AuditResourceType = 12
+	AuditResourceGuildIntegration      AuditResourceType = 13
+	AuditResourceImport                AuditResourceType = 14
+	AuditResourcePremium               AuditResourceType = 15
+	AuditResourceUserIntegration       AuditResourceType = 16
+	AuditResourceWhitelabel            AuditResourceType = 17
+	AuditResourceBotStaff              AuditResourceType = 18
+	AuditResourceTicketLabel           AuditResourceType = 19
+	AuditResourceTicketLabelAssignment AuditResourceType = 20
 )
 
 type AuditLogEntry struct {

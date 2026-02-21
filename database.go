@@ -99,6 +99,8 @@ type Database struct {
 	Votes                          *Votes
 	Webhooks                       *WebhookTable
 	WelcomeMessages                *WelcomeMessages
+	TicketLabels               *TicketLabelsTable
+	TicketLabelAssignments     *TicketLabelAssignmentsTable
 	Whitelabel                     *WhitelabelBotTable
 	WhitelabelErrors               *WhitelabelErrors
 	WhitelabelGuilds               *WhitelabelGuilds
@@ -196,6 +198,8 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		Votes:                          newVotes(pool),
 		Webhooks:                       newWebhookTable(pool),
 		WelcomeMessages:                newWelcomeMessages(pool),
+		TicketLabels:               newTicketLabelsTable(pool),
+		TicketLabelAssignments:     newTicketLabelAssignmentsTable(pool),
 		Whitelabel:                     newWhitelabelBotTable(pool),
 		WhitelabelErrors:               newWhitelabelErrors(pool),
 		WhitelabelGuilds:               newWhitelabelGuilds(pool),
@@ -308,6 +312,8 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.ExitSurveyResponses, // Must be created after Tickets table
 		d.ArchiveMessages,     // Must be created after Tickets table
 		d.CategoryUpdateQueue, // Must be created after Tickets table
+		d.TicketLabels,            // Must be created after Tickets table
+		d.TicketLabelAssignments,  // Must be created after Tickets and TicketLabels tables
 		d.FirstResponseTime,
 		d.TicketMembers,
 		d.TicketClaims,

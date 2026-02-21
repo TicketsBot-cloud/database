@@ -40,6 +40,7 @@ type TicketQueryOptions struct {
 	FilterByPanelIds []int     `json:"filter_by_panel_ids"`
 	PanelId          int       `json:"panel_id"`
 	Rating           int       `json:"rating"`
+	LabelIds         []int     `json:"label_ids"`
 	Order            OrderType `json:"order_type"`
 	Limit            int       `json:"limit"`
 	Offset           int       `json:"offset"`
@@ -60,6 +61,7 @@ func (o TicketQueryOptions) HasWhereClause() bool {
 		o.ClaimedById == 0 &&
 		len(o.FilterByPanelIds) == 0 &&
 		len(o.UserIds) == 0 &&
+		len(o.LabelIds) == 0 &&
 		o.Open == nil &&
 		o.Rating != 0
 }
@@ -403,6 +405,20 @@ FROM tickets`
 		needsAnd = true
 	}
 
+	if len(o.LabelIds) > 0 {
+		if needsAnd {
+			query += " AND "
+		}
+
+		labelIdArray := &pgtype.Int4Array{}
+		if err := labelIdArray.Set(o.LabelIds); err != nil {
+			return "", nil, err
+		}
+		args = append(args, labelIdArray)
+		query += fmt.Sprintf(`EXISTS (SELECT 1 FROM ticket_label_assignments tla WHERE tla.guild_id = tickets.guild_id AND tla.ticket_id = tickets.id AND tla.label_id = ANY($%d))`, len(args))
+		needsAnd = true
+	}
+
 	// Cannot use prepared statement for this value
 	if o.Order == OrderTypeAscending || o.Order == OrderTypeDescending {
 		query += fmt.Sprintf(` ORDER BY "id" %s `, o.Order)
@@ -535,6 +551,20 @@ func (o TicketQueryOptions) BuildCountQuery() (query string, args []interface{},
 
 		args = append(args, o.Rating)
 		query += fmt.Sprintf(`service_ratings.rating = $%d`, len(args))
+		needsAnd = true
+	}
+
+	if len(o.LabelIds) > 0 {
+		if needsAnd {
+			query += " AND "
+		}
+
+		labelIdArray := &pgtype.Int4Array{}
+		if err := labelIdArray.Set(o.LabelIds); err != nil {
+			return "", nil, err
+		}
+		args = append(args, labelIdArray)
+		query += fmt.Sprintf(`EXISTS (SELECT 1 FROM ticket_label_assignments tla WHERE tla.guild_id = tickets.guild_id AND tla.ticket_id = tickets.id AND tla.label_id = ANY($%d))`, len(args))
 		needsAnd = true
 	}
 
