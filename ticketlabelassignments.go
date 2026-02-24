@@ -32,6 +32,28 @@ CREATE INDEX IF NOT EXISTS tkla_guild_label_idx ON ticket_label_assignments("gui
 `
 }
 
+func (t *TicketLabelAssignmentsTable) GetLabelNameByTicket(ctx context.Context, guildId uint64, ticketId int) (map[int]string, error) {
+	query := `SELECT tla."label_id", tl."name" FROM ticket_label_assignments tla JOIN ticket_labels tl ON tla.guild_id = tl.guild_id AND tla.label_id = tl.label_id WHERE tla.guild_id = $1 AND tla.ticket_id = $2;`
+
+	rows, err := t.Query(ctx, query, guildId, ticketId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[int]string)
+	for rows.Next() {
+		var labelId int
+		var labelName string
+		if err := rows.Scan(&labelId, &labelName); err != nil {
+			return nil, err
+		}
+		result[labelId] = labelName
+	}
+
+	return result, nil
+}
+
 func (t *TicketLabelAssignmentsTable) GetByTicket(ctx context.Context, guildId uint64, ticketId int) ([]int, error) {
 	query := `SELECT "label_id" FROM ticket_label_assignments WHERE "guild_id" = $1 AND "ticket_id" = $2;`
 
