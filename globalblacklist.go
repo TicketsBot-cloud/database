@@ -2,11 +2,19 @@ package database
 
 import (
 	"context"
+	"errors"
+
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type GlobalBlacklist struct {
 	*pgxpool.Pool
+}
+
+type GlobalBlacklistEntry struct {
+	UserId uint64
+	Reason *string
 }
 
 func newGlobalBlacklist(db *pgxpool.Pool) *GlobalBlacklist {
@@ -65,8 +73,16 @@ func (b *GlobalBlacklist) Delete(ctx context.Context, userId uint64) (err error)
 	return
 }
 
-func (b *GlobalBlacklist) GetReason(ctx context.Context, userId uint64) (reason string, err error) {
-	query := `SELECT COALESCE(reason, '') FROM global_blacklist WHERE "user_id"=$1;`
-	err = b.QueryRow(ctx, query, userId).Scan(&reason)
-	return
+func (b *GlobalBlacklist) Get(ctx context.Context, userId uint64) (*GlobalBlacklistEntry, error) {
+	query := `SELECT "user_id", "reason" FROM global_blacklist WHERE "user_id" = $1;`
+
+	var entry GlobalBlacklistEntry
+	if err := b.QueryRow(ctx, query, userId).Scan(&entry.UserId, &entry.Reason); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &entry, nil
 }

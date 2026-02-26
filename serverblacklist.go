@@ -3,12 +3,20 @@ package database
 import (
 	"context"
 	"errors"
+
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 type ServerBlacklist struct {
 	*pgxpool.Pool
+}
+
+type ServerBlacklistEntry struct {
+	GuildId     uint64
+	Reason      *string
+	OwnerId     *uint64
+	RealOwnerId *uint64
 }
 
 func newServerBlacklist(db *pgxpool.Pool) *ServerBlacklist {
@@ -36,6 +44,34 @@ func (b *ServerBlacklist) IsBlacklisted(ctx context.Context, guildId uint64) (bo
 	return true, reason, nil
 }
 
+func (b *ServerBlacklist) Get(ctx context.Context, guildId uint64) (*ServerBlacklistEntry, error) {
+	query := `SELECT "guild_id", "reason", "owner_id", "real_owner_id" FROM server_blacklist WHERE "guild_id" = $1;`
+
+	var entry ServerBlacklistEntry
+	if err := b.QueryRow(ctx, query, guildId).Scan(&entry.GuildId, &entry.Reason, &entry.OwnerId, &entry.RealOwnerId); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &entry, nil
+}
+
+// GetUserBlacklistedOwnerCounts returns how many servers this user was owner of
+func (b *ServerBlacklist) GetUserBlacklistedOwnerCounts(ctx context.Context, userId uint64) (int, int, error) {
+	query := `SELECT
+		(SELECT COUNT(*) FROM server_blacklist WHERE "owner_id" = $1),
+		(SELECT COUNT(*) FROM server_blacklist WHERE "real_owner_id" = $1);`
+
+	var serverOwnerCount, realOwnerCount int
+	if err := b.QueryRow(ctx, query, userId).Scan(&serverOwnerCount, &realOwnerCount); err != nil {
+		return 0, 0, err
+	}
+
+	return serverOwnerCount, realOwnerCount, nil
+}
+
 func (b *ServerBlacklist) ListAll(ctx context.Context) ([]uint64, error) {
 	query := `SELECT "guild_id" FROM server_blacklist;`
 
@@ -57,9 +93,9 @@ func (b *ServerBlacklist) ListAll(ctx context.Context) ([]uint64, error) {
 	return guilds, nil
 }
 
-func (b *ServerBlacklist) Add(ctx context.Context, guildId uint64, reason *string) (err error) {
-	query := `INSERT INTO server_blacklist("guild_id", "reason") VALUES($1, $2) ON CONFLICT("guild_id") DO UPDATE SET "reason" = $2`
-	_, err = b.Exec(ctx, query, guildId, reason)
+func (b *ServerBlacklist) Add(ctx context.Context, guildId uint64, reason *string, ownerId *uint64, realOwnerId *uint64) (err error) {
+	query := `INSERT INTO server_blacklist("guild_id", "reason", "owner_id", "real_owner_id") VALUES($1, $2, $3, $4) ON CONFLICT("guild_id") DO UPDATE SET "reason" = $2, "owner_id" = $3, "real_owner_id" = $4`
+	_, err = b.Exec(ctx, query, guildId, reason, ownerId, realOwnerId)
 	return
 }
 
@@ -68,8 +104,3 @@ func (b *ServerBlacklist) Delete(ctx context.Context, guildId uint64) (err error
 	return
 }
 
-func (b *ServerBlacklist) GetReason(ctx context.Context, guildId uint64) (reason string, err error) {
-	query := `SELECT COALESCE(reason, '') FROM server_blacklist WHERE "guild_id"=$1;`
-	err = b.QueryRow(ctx, query, guildId).Scan(&reason)
-	return
-}
