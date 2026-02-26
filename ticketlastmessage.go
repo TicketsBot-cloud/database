@@ -58,24 +58,6 @@ WHERE "guild_id" = $1 AND "ticket_id" = $2;`
 	return
 }
 
-func (m *TicketLastMessageTable) ImportBulk(ctx context.Context, guildId uint64, lastMessages map[int]TicketLastMessage) (err error) {
-	rows := make([][]interface{}, 0)
-
-	for i, msg := range lastMessages {
-		rows = append(rows, []interface{}{
-			guildId,
-			i,
-			msg.LastMessageId,
-			msg.LastMessageTime,
-			msg.UserId,
-			msg.UserIsStaff,
-		})
-	}
-
-	_, err = m.CopyFrom(ctx, pgx.Identifier{"ticket_last_message"}, []string{"guild_id", "ticket_id", "last_message_id", "last_message_time", "user_id", "user_is_staff"}, pgx.CopyFromRows(rows))
-	return
-}
-
 func (m *TicketLastMessageTable) Set(ctx context.Context, guildId uint64, ticketId int, messageId, userId uint64, userIsStaff bool) (err error) {
 	query := `
 INSERT INTO ticket_last_message("guild_id", "ticket_id", "last_message_id", "last_message_time", "user_id", "user_is_staff")
