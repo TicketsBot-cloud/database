@@ -31,19 +31,20 @@ type Ticket struct {
 }
 
 type TicketQueryOptions struct {
-	Id               int       `json:"id"`
-	GuildId          uint64    `json:"guild_id"`
-	UserIds          []uint64  `json:"user_ids"`
-	Open             *bool     `json:"open"`
-	ClosedById       uint64    `json:"closed_by_id"`
-	ClaimedById      uint64    `json:"claimed_by_id"`
-	FilterByPanelIds []int     `json:"filter_by_panel_ids"`
-	PanelId          int       `json:"panel_id"`
-	Rating           int       `json:"rating"`
-	LabelIds         []int     `json:"label_ids"`
-	Order            OrderType `json:"order_type"`
-	Limit            int       `json:"limit"`
-	Offset           int       `json:"offset"`
+	Id                int       `json:"id"`
+	GuildId           uint64    `json:"guild_id"`
+	UserIds           []uint64  `json:"user_ids"`
+	Open              *bool     `json:"open"`
+	ClosedById        uint64    `json:"closed_by_id"`
+	ClaimedById       uint64    `json:"claimed_by_id"`
+	FilterByPanelIds  []int     `json:"filter_by_panel_ids"`
+	PanelId           int       `json:"panel_id"`
+	Rating            int       `json:"rating"`
+	LabelIds          []int     `json:"label_ids"`
+	CloseReasonSearch string    `json:"close_reason_search"`
+	Order             OrderType `json:"order_type"`
+	Limit             int       `json:"limit"`
+	Offset            int       `json:"offset"`
 }
 
 type OrderType string
@@ -62,6 +63,7 @@ func (o TicketQueryOptions) HasWhereClause() bool {
 		len(o.FilterByPanelIds) == 0 &&
 		len(o.UserIds) == 0 &&
 		len(o.LabelIds) == 0 &&
+		o.CloseReasonSearch == "" &&
 		o.Open == nil &&
 		o.Rating != 0
 }
@@ -296,7 +298,7 @@ FROM tickets`
 		query += " INNER JOIN service_ratings ON tickets.guild_id = service_ratings.guild_id AND tickets.id = service_ratings.ticket_id "
 	}
 
-	if o.ClosedById != 0 {
+	if o.ClosedById != 0 || o.CloseReasonSearch != "" {
 		query += " INNER JOIN close_reason ON tickets.guild_id = close_reason.guild_id AND tickets.id = close_reason.ticket_id "
 	}
 
@@ -333,6 +335,16 @@ FROM tickets`
 
 		args = append(args, o.ClosedById)
 		query += fmt.Sprintf(`close_reason.closed_by = $%d`, len(args))
+		needsAnd = true
+	}
+
+	if o.CloseReasonSearch != "" {
+		if needsAnd {
+			query += " AND "
+		}
+
+		args = append(args, o.CloseReasonSearch)
+		query += fmt.Sprintf(`close_reason.close_reason ILIKE '%%' || $%d || '%%'`, len(args))
 		needsAnd = true
 	}
 
@@ -445,7 +457,7 @@ func (o TicketQueryOptions) BuildCountQuery() (query string, args []interface{},
 		query += " INNER JOIN service_ratings ON tickets.guild_id = service_ratings.guild_id AND tickets.id = service_ratings.ticket_id "
 	}
 
-	if o.ClosedById != 0 {
+	if o.ClosedById != 0 || o.CloseReasonSearch != "" {
 		query += " INNER JOIN close_reason ON tickets.guild_id = close_reason.guild_id AND tickets.id = close_reason.ticket_id "
 	}
 
@@ -482,6 +494,16 @@ func (o TicketQueryOptions) BuildCountQuery() (query string, args []interface{},
 
 		args = append(args, o.ClosedById)
 		query += fmt.Sprintf(`close_reason.closed_by = $%d`, len(args))
+		needsAnd = true
+	}
+
+	if o.CloseReasonSearch != "" {
+		if needsAnd {
+			query += " AND "
+		}
+
+		args = append(args, o.CloseReasonSearch)
+		query += fmt.Sprintf(`close_reason.close_reason ILIKE '%%' || $%d || '%%'`, len(args))
 		needsAnd = true
 	}
 
