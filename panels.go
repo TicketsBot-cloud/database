@@ -9,38 +9,45 @@ import (
 )
 
 type Panel struct {
-	PanelId                   int     `json:"panel_id"`
-	MessageId                 uint64  `json:"message_id,string"`
-	ChannelId                 uint64  `json:"channel_id,string"`
-	GuildId                   uint64  `json:"guild_id,string"`
-	Title                     string  `json:"title"`
-	Content                   string  `json:"content"`
-	Colour                    int32   `json:"colour"`
-	TargetCategory            uint64  `json:"category_id,string"`
-	EmojiName                 *string `json:"emoji_name"`
-	EmojiId                   *uint64 `json:"emoji_id,string"`
-	WelcomeMessageEmbed       *int    `json:"welcome_message_embed"`
-	WithDefaultTeam           bool    `json:"default_team"`
-	CustomId                  string  `json:"custom_id"`
-	ImageUrl                  *string `json:"image_url,omitempty"`
-	ThumbnailUrl              *string `json:"thumbnail_url,omitempty"`
-	ButtonStyle               int     `json:"button_style"`
-	ButtonLabel               string  `json:"button_label"`
-	FormId                    *int    `json:"form_id"`
-	NamingScheme              *string `json:"naming_scheme"`
-	ForceDisabled             bool    `json:"force_disabled"`
-	Disabled                  bool    `json:"disabled"`
-	ExitSurveyFormId          *int    `json:"exit_survey_form_id"`
-	PendingCategory           *uint64 `json:"pending_category,string"`
-	DeleteMentions            bool    `json:"delete_mentions"`
-	TranscriptChannelId       *uint64 `json:"transcript_channel_id,string,omitempty"`
-	UseThreads                bool    `json:"use_threads"`
-	TicketNotificationChannel *uint64 `json:"ticket_notification_channel,string,omitempty"`
-	CooldownSeconds           int     `json:"cooldown_seconds"`
-	TicketLimit               *uint8  `json:"ticket_limit,omitempty"`
-	HideCloseButton           bool    `json:"hide_close_button"`
-	HideCloseWithReasonButton bool    `json:"hide_close_with_reason_button"`
-	HideClaimButton           bool    `json:"hide_claim_button"`
+	PanelId                        int     `json:"panel_id"`
+	MessageId                      uint64  `json:"message_id,string"`
+	ChannelId                      uint64  `json:"channel_id,string"`
+	GuildId                        uint64  `json:"guild_id,string"`
+	Title                          string  `json:"title"`
+	Content                        string  `json:"content"`
+	Colour                         int32   `json:"colour"`
+	TargetCategory                 uint64  `json:"category_id,string"`
+	EmojiName                      *string `json:"emoji_name"`
+	EmojiId                        *uint64 `json:"emoji_id,string"`
+	WelcomeMessageEmbed            *int    `json:"welcome_message_embed"`
+	WithDefaultTeam                bool    `json:"default_team"`
+	CustomId                       string  `json:"custom_id"`
+	ImageUrl                       *string `json:"image_url,omitempty"`
+	ThumbnailUrl                   *string `json:"thumbnail_url,omitempty"`
+	ButtonStyle                    int     `json:"button_style"`
+	ButtonLabel                    string  `json:"button_label"`
+	FormId                         *int    `json:"form_id"`
+	NamingScheme                   *string `json:"naming_scheme"`
+	ForceDisabled                  bool    `json:"force_disabled"`
+	Disabled                       bool    `json:"disabled"`
+	ExitSurveyFormId               *int    `json:"exit_survey_form_id"`
+	PendingCategory                *uint64 `json:"pending_category,string"`
+	DeleteMentions                 bool    `json:"delete_mentions"`
+	TranscriptChannelId            *uint64 `json:"transcript_channel_id,string,omitempty"`
+	UseThreads                     bool    `json:"use_threads"`
+	TicketNotificationChannel      *uint64 `json:"ticket_notification_channel,string,omitempty"`
+	CooldownSeconds                int     `json:"cooldown_seconds"`
+	TicketLimit                    *uint8  `json:"ticket_limit,omitempty"`
+	HideCloseButton                bool    `json:"hide_close_button"`
+	HideCloseWithReasonButton      bool    `json:"hide_close_with_reason_button"`
+	HideClaimButton                bool    `json:"hide_claim_button"`
+	TicketPermsAddReactions        bool    `json:"tp_add_reactions"`
+	TicketPermsSendTTSMessages     bool    `json:"tp_send_tts_messages"`
+	TicketPermsEmbedLinks          bool    `json:"tp_embed_links"`
+	TicketPermsAttachFiles         bool    `json:"tp_attach_files"`
+	TicketPermsUseExternalEmojis   bool    `json:"tp_use_external_emojis"`
+	TicketPermsUseExternalStickers bool    `json:"tp_use_external_stickers"`
+	TicketPermsSendVoiceMessages   bool    `json:"tp_send_voice_messages"`
 }
 
 type PanelWithWelcomeMessage struct {
@@ -94,6 +101,13 @@ CREATE TABLE IF NOT EXISTS panels(
 	"hide_close_button" bool NOT NULL DEFAULT false,
 	"hide_close_with_reason_button" bool NOT NULL DEFAULT false,
 	"hide_claim_button" bool NOT NULL DEFAULT false,
+	"tp_add_reactions" bool NOT NULL DEFAULT false,
+	"tp_send_tts_messages" bool NOT NULL DEFAULT false,
+	"tp_embed_links" bool NOT NULL DEFAULT false,
+	"tp_attach_files" bool NOT NULL DEFAULT false,
+	"tp_use_external_emojis" bool NOT NULL DEFAULT false,
+	"tp_use_external_stickers" bool NOT NULL DEFAULT false,
+	"tp_send_voice_messages" bool NOT NULL DEFAULT false,
 	FOREIGN KEY ("welcome_message") REFERENCES embeds("id") ON DELETE SET NULL,
 	FOREIGN KEY ("form_id") REFERENCES forms("form_id"),
 	FOREIGN KEY ("exit_survey_form_id") REFERENCES forms("form_id"),
@@ -140,7 +154,14 @@ SELECT
 	ticket_limit,
 	hide_close_button,
 	hide_close_with_reason_button,
-	hide_claim_button
+	hide_claim_button,
+	tp_add_reactions,
+	tp_send_tts_messages,
+	tp_embed_links,
+	tp_attach_files,
+	tp_use_external_emojis,
+	tp_use_external_stickers,
+	tp_send_voice_messages
 FROM panels
 WHERE "message_id" = $1;
 `
@@ -187,7 +208,14 @@ SELECT
 	ticket_limit,
 	hide_close_button,
 	hide_close_with_reason_button,
-	hide_claim_button
+	hide_claim_button,
+	tp_add_reactions,
+	tp_send_tts_messages,
+	tp_embed_links,
+	tp_attach_files,
+	tp_use_external_emojis,
+	tp_use_external_stickers,
+	tp_send_voice_messages
 FROM panels
 WHERE "panel_id" = $1;
 `
@@ -235,6 +263,13 @@ SELECT
 	panels.hide_close_button,
 	panels.hide_close_with_reason_button,
 	panels.hide_claim_button,
+	panels.tp_add_reactions,
+	panels.tp_send_tts_messages,
+	panels.tp_embed_links,
+	panels.tp_attach_files,
+	panels.tp_use_external_emojis,
+	panels.tp_use_external_stickers,
+	panels.tp_send_voice_messages,
 	embeds.id,
 	embeds.guild_id,
 	embeds.title,
@@ -343,7 +378,14 @@ SELECT
 	ticket_limit,
 	hide_close_button,
 	hide_close_with_reason_button,
-	hide_claim_button
+	hide_claim_button,
+	tp_add_reactions,
+	tp_send_tts_messages,
+	tp_embed_links,
+	tp_attach_files,
+	tp_use_external_emojis,
+	tp_use_external_stickers,
+	tp_send_voice_messages
 FROM panels
 WHERE "guild_id" = $1 AND "custom_id" = $2;
 `
@@ -393,7 +435,14 @@ SELECT
 	ticket_limit,
 	hide_close_button,
 	hide_close_with_reason_button,
-	hide_claim_button
+	hide_claim_button,
+	tp_add_reactions,
+	tp_send_tts_messages,
+	tp_embed_links,
+	tp_attach_files,
+	tp_use_external_emojis,
+	tp_use_external_stickers,
+	tp_send_voice_messages
 FROM panels
 WHERE "guild_id" = $1 AND "form_id" = $2;
 `
@@ -443,7 +492,14 @@ SELECT
 	panels.ticket_limit,
 	panels.hide_close_button,
 	panels.hide_close_with_reason_button,
-	panels.hide_claim_button
+	panels.hide_claim_button,
+	panels.tp_attach_files,
+	panels.tp_embed_links,
+	panels.tp_add_reactions,
+	panels.tp_send_voice_messages,
+	panels.tp_send_tts_messages,
+	panels.tp_use_external_emojis,
+	panels.tp_use_external_stickers
 FROM panels
 INNER JOIN forms
 ON forms.form_id = panels.form_id
@@ -495,7 +551,14 @@ SELECT
 	ticket_limit,
 	hide_close_button,
 	hide_close_with_reason_button,
-	hide_claim_button
+	hide_claim_button,
+	tp_add_reactions,
+	tp_send_tts_messages,
+	tp_embed_links,
+	tp_attach_files,
+	tp_use_external_emojis,
+	tp_use_external_stickers,
+	tp_send_voice_messages
 FROM panels
 WHERE "guild_id" = $1
 ORDER BY "panel_id" ASC;`
@@ -553,6 +616,13 @@ SELECT
 	panels.hide_close_button,
 	panels.hide_close_with_reason_button,
 	panels.hide_claim_button,
+	panels.tp_add_reactions,
+	panels.tp_send_tts_messages,
+	panels.tp_embed_links,
+	panels.tp_attach_files,
+	panels.tp_use_external_emojis,
+	panels.tp_use_external_stickers,
+	panels.tp_send_voice_messages,
 	embeds.id,
 	embeds.guild_id,
 	embeds.title,
@@ -678,9 +748,16 @@ INSERT INTO panels(
 	"ticket_limit",
 	"hide_close_button",
 	"hide_close_with_reason_button",
-	"hide_claim_button"
+	"hide_claim_button",
+	"tp_add_reactions",
+	"tp_send_tts_messages",
+	"tp_embed_links",
+	"tp_attach_files",
+	"tp_use_external_emojis",
+	"tp_use_external_stickers",
+	"tp_send_voice_messages"
 )
-VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31)
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38)
 ON CONFLICT("message_id") DO NOTHING
 RETURNING "panel_id";`
 
@@ -716,6 +793,13 @@ RETURNING "panel_id";`
 		panel.HideCloseButton,
 		panel.HideCloseWithReasonButton,
 		panel.HideClaimButton,
+		panel.TicketPermsAddReactions,
+		panel.TicketPermsSendTTSMessages,
+		panel.TicketPermsEmbedLinks,
+		panel.TicketPermsAttachFiles,
+		panel.TicketPermsUseExternalEmojis,
+		panel.TicketPermsUseExternalStickers,
+		panel.TicketPermsSendVoiceMessages,
 	).Scan(&panelId)
 
 	return
@@ -768,7 +852,14 @@ UPDATE panels
 		"ticket_limit" = $28,
 		"hide_close_button" = $29,
 		"hide_close_with_reason_button" = $30,
-		"hide_claim_button" = $31
+		"hide_claim_button" = $31,
+		"tp_add_reactions" = $32,
+		"tp_send_tts_messages" = $33,
+		"tp_embed_links" = $34,
+		"tp_attach_files" = $35,
+		"tp_use_external_emojis" = $36,
+		"tp_use_external_stickers" = $37,
+		"tp_send_voice_messages" = $38
 	WHERE
 		"panel_id" = $1
 ;`
@@ -805,6 +896,13 @@ UPDATE panels
 		panel.HideCloseButton,
 		panel.HideCloseWithReasonButton,
 		panel.HideClaimButton,
+		panel.TicketPermsAddReactions,
+		panel.TicketPermsSendTTSMessages,
+		panel.TicketPermsEmbedLinks,
+		panel.TicketPermsAttachFiles,
+		panel.TicketPermsUseExternalEmojis,
+		panel.TicketPermsUseExternalStickers,
+		panel.TicketPermsSendVoiceMessages,
 	)
 
 	return err
@@ -928,5 +1026,12 @@ func (p *Panel) fieldPtrs() []interface{} {
 		&p.HideCloseButton,
 		&p.HideCloseWithReasonButton,
 		&p.HideClaimButton,
+		&p.TicketPermsAddReactions,
+		&p.TicketPermsSendTTSMessages,
+		&p.TicketPermsEmbedLinks,
+		&p.TicketPermsAttachFiles,
+		&p.TicketPermsUseExternalEmojis,
+		&p.TicketPermsUseExternalStickers,
+		&p.TicketPermsSendVoiceMessages,
 	}
 }
