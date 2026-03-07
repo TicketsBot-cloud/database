@@ -41,13 +41,13 @@ type Panel struct {
 	HideCloseButton                bool    `json:"hide_close_button"`
 	HideCloseWithReasonButton      bool    `json:"hide_close_with_reason_button"`
 	HideClaimButton                bool    `json:"hide_claim_button"`
-	TicketPermsAttachFiles         bool    `json:"tp_attach_files"`
-	TicketPermsEmbedLinks          bool    `json:"tp_embed_links"`
 	TicketPermsAddReactions        bool    `json:"tp_add_reactions"`
-	TicketPermsSendVoiceMessages   bool    `json:"tp_send_voice_messages"`
 	TicketPermsSendTTSMessages     bool    `json:"tp_send_tts_messages"`
+	TicketPermsEmbedLinks          bool    `json:"tp_embed_links"`
+	TicketPermsAttachFiles         bool    `json:"tp_attach_files"`
 	TicketPermsUseExternalEmojis   bool    `json:"tp_use_external_emojis"`
 	TicketPermsUseExternalStickers bool    `json:"tp_use_external_stickers"`
+	TicketPermsSendVoiceMessages   bool    `json:"tp_send_voice_messages"`
 }
 
 type PanelWithWelcomeMessage struct {
@@ -101,13 +101,13 @@ CREATE TABLE IF NOT EXISTS panels(
 	"hide_close_button" bool NOT NULL DEFAULT false,
 	"hide_close_with_reason_button" bool NOT NULL DEFAULT false,
 	"hide_claim_button" bool NOT NULL DEFAULT false,
-	"tp_attach_files" bool NOT NULL DEFAULT false,
-	"tp_embed_links" bool NOT NULL DEFAULT false,
 	"tp_add_reactions" bool NOT NULL DEFAULT false,
-	"tp_send_voice_messages" bool NOT NULL DEFAULT false,
 	"tp_send_tts_messages" bool NOT NULL DEFAULT false,
+	"tp_embed_links" bool NOT NULL DEFAULT false,
+	"tp_attach_files" bool NOT NULL DEFAULT false,
 	"tp_use_external_emojis" bool NOT NULL DEFAULT false,
 	"tp_use_external_stickers" bool NOT NULL DEFAULT false,
+	"tp_send_voice_messages" bool NOT NULL DEFAULT false,
 	FOREIGN KEY ("welcome_message") REFERENCES embeds("id") ON DELETE SET NULL,
 	FOREIGN KEY ("form_id") REFERENCES forms("form_id"),
 	FOREIGN KEY ("exit_survey_form_id") REFERENCES forms("form_id"),
@@ -155,13 +155,13 @@ SELECT
 	hide_close_button,
 	hide_close_with_reason_button,
 	hide_claim_button,
-	tp_attach_files,
-	tp_embed_links,
 	tp_add_reactions,
-	tp_send_voice_messages,
 	tp_send_tts_messages,
+	tp_embed_links,
+	tp_attach_files,
 	tp_use_external_emojis,
-	tp_use_external_stickers
+	tp_use_external_stickers,
+	tp_send_voice_messages
 FROM panels
 WHERE "message_id" = $1;
 `
@@ -209,13 +209,13 @@ SELECT
 	hide_close_button,
 	hide_close_with_reason_button,
 	hide_claim_button,
-	tp_attach_files,
-	tp_embed_links,
 	tp_add_reactions,
-	tp_send_voice_messages,
 	tp_send_tts_messages,
+	tp_embed_links,
+	tp_attach_files,
 	tp_use_external_emojis,
-	tp_use_external_stickers
+	tp_use_external_stickers,
+	tp_send_voice_messages
 FROM panels
 WHERE "panel_id" = $1;
 `
@@ -263,13 +263,13 @@ SELECT
 	panels.hide_close_button,
 	panels.hide_close_with_reason_button,
 	panels.hide_claim_button,
-	panels.tp_attach_files,
-	panels.tp_embed_links,
 	panels.tp_add_reactions,
-	panels.tp_send_voice_messages,
 	panels.tp_send_tts_messages,
+	panels.tp_embed_links,
+	panels.tp_attach_files,
 	panels.tp_use_external_emojis,
 	panels.tp_use_external_stickers,
+	panels.tp_send_voice_messages,
 	embeds.id,
 	embeds.guild_id,
 	embeds.title,
@@ -379,13 +379,13 @@ SELECT
 	hide_close_button,
 	hide_close_with_reason_button,
 	hide_claim_button,
-	tp_attach_files,
-	tp_embed_links,
 	tp_add_reactions,
-	tp_send_voice_messages,
 	tp_send_tts_messages,
+	tp_embed_links,
+	tp_attach_files,
 	tp_use_external_emojis,
-	tp_use_external_stickers
+	tp_use_external_stickers,
+	tp_send_voice_messages
 FROM panels
 WHERE "guild_id" = $1 AND "custom_id" = $2;
 `
@@ -436,13 +436,13 @@ SELECT
 	hide_close_button,
 	hide_close_with_reason_button,
 	hide_claim_button,
-	tp_attach_files,
-	tp_embed_links,
 	tp_add_reactions,
-	tp_send_voice_messages,
 	tp_send_tts_messages,
+	tp_embed_links,
+	tp_attach_files,
 	tp_use_external_emojis,
-	tp_use_external_stickers
+	tp_use_external_stickers,
+	tp_send_voice_messages
 FROM panels
 WHERE "guild_id" = $1 AND "form_id" = $2;
 `
@@ -552,13 +552,13 @@ SELECT
 	hide_close_button,
 	hide_close_with_reason_button,
 	hide_claim_button,
-	tp_attach_files,
-	tp_embed_links,
 	tp_add_reactions,
-	tp_send_voice_messages,
 	tp_send_tts_messages,
+	tp_embed_links,
+	tp_attach_files,
 	tp_use_external_emojis,
-	tp_use_external_stickers
+	tp_use_external_stickers,
+	tp_send_voice_messages
 FROM panels
 WHERE "guild_id" = $1
 ORDER BY "panel_id" ASC;`
@@ -616,13 +616,13 @@ SELECT
 	panels.hide_close_button,
 	panels.hide_close_with_reason_button,
 	panels.hide_claim_button,
-	panels.tp_attach_files,
-	panels.tp_embed_links,
 	panels.tp_add_reactions,
-	panels.tp_send_voice_messages,
 	panels.tp_send_tts_messages,
+	panels.tp_embed_links,
+	panels.tp_attach_files,
 	panels.tp_use_external_emojis,
 	panels.tp_use_external_stickers,
+	panels.tp_send_voice_messages,
 	embeds.id,
 	embeds.guild_id,
 	embeds.title,
@@ -749,13 +749,13 @@ INSERT INTO panels(
 	"hide_close_button",
 	"hide_close_with_reason_button",
 	"hide_claim_button",
-	"tp_attach_files",
-	"tp_embed_links",
 	"tp_add_reactions",
-	"tp_send_voice_messages",
 	"tp_send_tts_messages",
+	"tp_embed_links",
+	"tp_attach_files",
 	"tp_use_external_emojis",
-	"tp_use_external_stickers"
+	"tp_use_external_stickers",
+	"tp_send_voice_messages"
 )
 VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38)
 ON CONFLICT("message_id") DO NOTHING
@@ -793,13 +793,13 @@ RETURNING "panel_id";`
 		panel.HideCloseButton,
 		panel.HideCloseWithReasonButton,
 		panel.HideClaimButton,
-		panel.TicketPermsAttachFiles,
-		panel.TicketPermsEmbedLinks,
 		panel.TicketPermsAddReactions,
-		panel.TicketPermsSendVoiceMessages,
 		panel.TicketPermsSendTTSMessages,
+		panel.TicketPermsEmbedLinks,
+		panel.TicketPermsAttachFiles,
 		panel.TicketPermsUseExternalEmojis,
 		panel.TicketPermsUseExternalStickers,
+		panel.TicketPermsSendVoiceMessages,
 	).Scan(&panelId)
 
 	return
@@ -853,13 +853,13 @@ UPDATE panels
 		"hide_close_button" = $29,
 		"hide_close_with_reason_button" = $30,
 		"hide_claim_button" = $31,
-		"tp_attach_files" = $32,
-		"tp_embed_links" = $33,
-		"tp_add_reactions" = $34,
-		"tp_send_voice_messages" = $35,
-		"tp_send_tts_messages" = $36,
-		"tp_use_external_emojis" = $37,
-		"tp_use_external_stickers" = $38
+		"tp_add_reactions" = $32,
+		"tp_send_tts_messages" = $33,
+		"tp_embed_links" = $34,
+		"tp_attach_files" = $35,
+		"tp_use_external_emojis" = $36,
+		"tp_use_external_stickers" = $37,
+		"tp_send_voice_messages" = $38
 	WHERE
 		"panel_id" = $1
 ;`
@@ -896,13 +896,13 @@ UPDATE panels
 		panel.HideCloseButton,
 		panel.HideCloseWithReasonButton,
 		panel.HideClaimButton,
-		panel.TicketPermsAttachFiles,
-		panel.TicketPermsEmbedLinks,
 		panel.TicketPermsAddReactions,
-		panel.TicketPermsSendVoiceMessages,
 		panel.TicketPermsSendTTSMessages,
+		panel.TicketPermsEmbedLinks,
+		panel.TicketPermsAttachFiles,
 		panel.TicketPermsUseExternalEmojis,
 		panel.TicketPermsUseExternalStickers,
+		panel.TicketPermsSendVoiceMessages,
 	)
 
 	return err
@@ -1026,12 +1026,12 @@ func (p *Panel) fieldPtrs() []interface{} {
 		&p.HideCloseButton,
 		&p.HideCloseWithReasonButton,
 		&p.HideClaimButton,
-		&p.TicketPermsAttachFiles,
-		&p.TicketPermsEmbedLinks,
 		&p.TicketPermsAddReactions,
-		&p.TicketPermsSendVoiceMessages,
 		&p.TicketPermsSendTTSMessages,
+		&p.TicketPermsEmbedLinks,
+		&p.TicketPermsAttachFiles,
 		&p.TicketPermsUseExternalEmojis,
 		&p.TicketPermsUseExternalStickers,
+		&p.TicketPermsSendVoiceMessages,
 	}
 }
