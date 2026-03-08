@@ -101,19 +101,6 @@ SELECT EXISTS(
 	return
 }
 
-func (p *ParticipantTable) ImportBulk(ctx context.Context, guildId uint64, participantMap map[int][]uint64) (err error) {
-	rows := make([][]interface{}, 0)
-
-	for ticketId, participants := range participantMap {
-		for _, userId := range participants {
-			rows = append(rows, []interface{}{guildId, ticketId, userId})
-		}
-	}
-
-	_, err = p.CopyFrom(ctx, pgx.Identifier{"participant"}, []string{"guild_id", "ticket_id", "user_id"}, pgx.CopyFromRows(rows))
-	return
-}
-
 func (p *ParticipantTable) Set(ctx context.Context, guildId uint64, ticketId int, userId uint64) (err error) {
 	query := `
 INSERT INTO participant("guild_id", "ticket_id", "user_id")
