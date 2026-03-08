@@ -85,6 +85,7 @@ type Database struct {
 	SubscriptionSkus               *SubscriptionSkus
 	SupportTeam                    *SupportTeamTable
 	SupportTeamMembers             *SupportTeamMembersTable
+	SupportTeamPermissions         *SupportTeamPermissionsTable
 	SupportTeamRoles               *SupportTeamRolesTable
 	Tag                            *TagsTable
 	TicketClaims                   *TicketClaims
@@ -185,6 +186,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		SubscriptionSkus:               newSubscriptionSkusTable(pool),
 		SupportTeam:                    newSupportTeamTable(pool),
 		SupportTeamMembers:             newSupportTeamMembersTable(pool),
+		SupportTeamPermissions:         newSupportTeamPermissionsTable(pool),
 		SupportTeamRoles:               newSupportTeamRolesTable(pool),
 		Tag:                            newTag(pool),
 		TicketClaims:                   newTicketClaims(pool),
@@ -300,7 +302,8 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.SupportTeam,
 		d.SupportTeamMembers,
 		d.SupportTeamRoles,
-		d.PanelTeams, // Must be created after panels & support teams tables
+		d.SupportTeamPermissions, // must be created after support_team table
+		d.PanelTeams,             // Must be created after panels & support teams tables
 		d.Tag,
 		d.TicketLimit,
 		d.TicketPermissions,

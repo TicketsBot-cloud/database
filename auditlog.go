@@ -40,6 +40,7 @@ const (
 
 	AuditActionTeamCreate AuditActionType = 60
 	AuditActionTeamDelete AuditActionType = 61
+	AuditActionTeamUpdate AuditActionType = 62
 
 	AuditActionTeamMemberAdd    AuditActionType = 65
 	AuditActionTeamMemberRemove AuditActionType = 66
