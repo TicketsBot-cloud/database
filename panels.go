@@ -9,38 +9,38 @@ import (
 )
 
 type Panel struct {
-	PanelId                   int     `json:"panel_id"`
-	MessageId                 uint64  `json:"message_id,string"`
-	ChannelId                 uint64  `json:"channel_id,string"`
-	GuildId                   uint64  `json:"guild_id,string"`
-	Title                     string  `json:"title"`
-	Content                   string  `json:"content"`
-	Colour                    int32   `json:"colour"`
-	TargetCategory            uint64  `json:"category_id,string"`
-	EmojiName                 *string `json:"emoji_name"`
-	EmojiId                   *uint64 `json:"emoji_id,string"`
-	WelcomeMessageEmbed       *int    `json:"welcome_message_embed"`
-	WithDefaultTeam           bool    `json:"default_team"`
-	CustomId                  string  `json:"custom_id"`
-	ImageUrl                  *string `json:"image_url,omitempty"`
-	ThumbnailUrl              *string `json:"thumbnail_url,omitempty"`
-	ButtonStyle               int     `json:"button_style"`
-	ButtonLabel               string  `json:"button_label"`
-	FormId                    *int    `json:"form_id"`
-	NamingScheme              *string `json:"naming_scheme"`
-	ForceDisabled             bool    `json:"force_disabled"`
-	Disabled                  bool    `json:"disabled"`
-	ExitSurveyFormId          *int    `json:"exit_survey_form_id"`
-	PendingCategory           *uint64 `json:"pending_category,string"`
-	DeleteMentions            bool    `json:"delete_mentions"`
-	TranscriptChannelId       *uint64 `json:"transcript_channel_id,string,omitempty"`
-	UseThreads                bool    `json:"use_threads"`
-	TicketNotificationChannel *uint64 `json:"ticket_notification_channel,string,omitempty"`
-	CooldownSeconds           int     `json:"cooldown_seconds"`
-	TicketLimit               *uint8  `json:"ticket_limit,omitempty"`
-	HideCloseButton           bool    `json:"hide_close_button"`
-	HideCloseWithReasonButton bool    `json:"hide_close_with_reason_button"`
-	HideClaimButton           bool    `json:"hide_claim_button"`
+	PanelId                        int     `json:"panel_id"`
+	MessageId                      uint64  `json:"message_id,string"`
+	ChannelId                      uint64  `json:"channel_id,string"`
+	GuildId                        uint64  `json:"guild_id,string"`
+	Title                          string  `json:"title"`
+	Content                        string  `json:"content"`
+	Colour                         int32   `json:"colour"`
+	TargetCategory                 uint64  `json:"category_id,string"`
+	EmojiName                      *string `json:"emoji_name"`
+	EmojiId                        *uint64 `json:"emoji_id,string"`
+	WelcomeMessageEmbed            *int    `json:"welcome_message_embed"`
+	WithDefaultTeam                bool    `json:"default_team"`
+	CustomId                       string  `json:"custom_id"`
+	ImageUrl                       *string `json:"image_url,omitempty"`
+	ThumbnailUrl                   *string `json:"thumbnail_url,omitempty"`
+	ButtonStyle                    int     `json:"button_style"`
+	ButtonLabel                    string  `json:"button_label"`
+	FormId                         *int    `json:"form_id"`
+	NamingScheme                   *string `json:"naming_scheme"`
+	ForceDisabled                  bool    `json:"force_disabled"`
+	Disabled                       bool    `json:"disabled"`
+	ExitSurveyFormId               *int    `json:"exit_survey_form_id"`
+	PendingCategory                *uint64 `json:"pending_category,string"`
+	DeleteMentions                 bool    `json:"delete_mentions"`
+	TranscriptChannelId            *uint64 `json:"transcript_channel_id,string,omitempty"`
+	UseThreads                     bool    `json:"use_threads"`
+	TicketNotificationChannel      *uint64 `json:"ticket_notification_channel,string,omitempty"`
+	CooldownSeconds                int     `json:"cooldown_seconds"`
+	TicketLimit                    *uint8  `json:"ticket_limit,omitempty"`
+	HideCloseButton                bool    `json:"hide_close_button"`
+	HideCloseWithReasonButton      bool    `json:"hide_close_with_reason_button"`
+	HideClaimButton                bool    `json:"hide_claim_button"`
 }
 
 type PanelWithWelcomeMessage struct {
@@ -443,7 +443,7 @@ SELECT
 	panels.ticket_limit,
 	panels.hide_close_button,
 	panels.hide_close_with_reason_button,
-	panels.hide_claim_button
+	panels.hide_claim_button,
 FROM panels
 INNER JOIN forms
 ON forms.form_id = panels.form_id

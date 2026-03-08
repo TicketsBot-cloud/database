@@ -69,6 +69,7 @@ type Database struct {
 	PanelSupportHours              *PanelSupportHoursTable
 	PanelSupportHoursSettings      *PanelSupportHoursSettingsTable
 	PanelTeams                     *PanelTeamsTable
+	PanelTicketPermissions         *PanelTicketPermissionsTable
 	PanelUserMention               *PanelUserMention
 	PanelHereMention               *PanelHereMention
 	Participants                   *ParticipantTable
@@ -170,6 +171,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		PanelSupportHours:              newPanelSupportHoursTable(pool),
 		PanelSupportHoursSettings:      newPanelSupportHoursSettingsTable(pool),
 		PanelTeams:                     newPanelTeamsTable(pool),
+		PanelTicketPermissions:         newPanelTicketPermissionsTable(pool),
 		PanelUserMention:               newPanelUserMention(pool),
 		PanelHereMention:               newPanelHereMention(pool),
 		Participants:                   newParticipantTable(pool),
@@ -283,6 +285,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.NamingScheme,
 		d.OnCall,
 		d.Panel,
+		d.PanelTicketPermissions, // must be created after panels table
 		d.PanelAccessControlRules, // must be created after panels table
 		d.MultiPanelTargets,       // must be created after panels table
 		d.PanelRoleMentions,
