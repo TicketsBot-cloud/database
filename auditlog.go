@@ -84,6 +84,14 @@ const (
 
 	AuditActionBotStaffAdd    AuditActionType = 300
 	AuditActionBotStaffRemove AuditActionType = 301
+
+	AuditActionGlobalBlacklistAdd    AuditActionType = 310
+	AuditActionGlobalBlacklistRemove AuditActionType = 311
+
+	AuditActionServerBlacklistAdd    AuditActionType = 320
+	AuditActionServerBlacklistRemove AuditActionType = 321
+
+	AuditActionPremiumKeyGenerate AuditActionType = 330
 )
 
 type AuditResourceType int16
@@ -109,6 +117,9 @@ const (
 	AuditResourceBotStaff              AuditResourceType = 18
 	AuditResourceTicketLabel           AuditResourceType = 19
 	AuditResourceTicketLabelAssignment AuditResourceType = 20
+	AuditResourceGlobalBlacklist       AuditResourceType = 21
+	AuditResourceServerBlacklist       AuditResourceType = 22
+	AuditResourcePremiumKey            AuditResourceType = 23
 )
 
 type AuditLogEntry struct {

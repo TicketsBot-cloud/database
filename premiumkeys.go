@@ -2,15 +2,37 @@ package database
 
 import (
 	"context"
+	_ "embed"
 	"errors"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"time"
 )
 
 type PremiumKeys struct {
 	*pgxpool.Pool
+}
+
+var (
+	//go:embed sql/premium_keys/list_all.sql
+	premiumKeysListAll string
+
+	//go:embed sql/premium_keys/count_all.sql
+	premiumKeysCountAll string
+)
+
+type PremiumKeyEntry struct {
+	Key         uuid.UUID      `json:"key"`
+	Length      *time.Duration `json:"length"`
+	SkuId       *uuid.UUID     `json:"sku_id"`
+	GeneratedAt *time.Time     `json:"generated_at"`
+	SkuLabel    *string        `json:"sku_label"`
+	Tier        *string        `json:"tier"`
+	GuildId     *uint64        `json:"guild_id"`
+	ActivatedBy *uint64        `json:"activated_by"`
+	IsUsed      bool           `json:"is_used"`
 }
 
 func newPremiumKeys(db *pgxpool.Pool) *PremiumKeys {
@@ -51,4 +73,42 @@ func (k *PremiumKeys) Delete(ctx context.Context, tx pgx.Tx, key uuid.UUID) (tim
 	}
 
 	return length, skuId, true, nil
+}
+
+func (k *PremiumKeys) ListAll(ctx context.Context, limit, offset int) ([]PremiumKeyEntry, error) {
+	rows, err := k.Query(ctx, premiumKeysListAll, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	var entries []PremiumKeyEntry
+	for rows.Next() {
+		var entry PremiumKeyEntry
+		if err := rows.Scan(
+			&entry.Key,
+			&entry.Length,
+			&entry.SkuId,
+			&entry.GeneratedAt,
+			&entry.SkuLabel,
+			&entry.Tier,
+			&entry.GuildId,
+			&entry.ActivatedBy,
+			&entry.IsUsed,
+		); err != nil {
+			return nil, err
+		}
+
+		entries = append(entries, entry)
+	}
+
+	return entries, nil
+}
+
+func (k *PremiumKeys) CountAll(ctx context.Context) (int, error) {
+	var count int
+	if err := k.QueryRow(ctx, premiumKeysCountAll).Scan(&count); err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }

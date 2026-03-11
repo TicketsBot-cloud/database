@@ -104,3 +104,21 @@ func (b *ServerBlacklist) Delete(ctx context.Context, guildId uint64) (err error
 	return
 }
 
+func (b *ServerBlacklist) ListAllEntries(ctx context.Context) ([]ServerBlacklistEntry, error) {
+	query := `SELECT "guild_id", "reason", "owner_id", "real_owner_id" FROM server_blacklist;`
+	rows, err := b.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	var entries []ServerBlacklistEntry
+	for rows.Next() {
+		var entry ServerBlacklistEntry
+		if err := rows.Scan(&entry.GuildId, &entry.Reason, &entry.OwnerId, &entry.RealOwnerId); err != nil {
+			return nil, err
+		}
+		entries = append(entries, entry)
+	}
+	return entries, nil
+}
+
