@@ -24,7 +24,7 @@ type Panel struct {
 	CustomId                       string  `json:"custom_id"`
 	ImageUrl                       *string `json:"image_url,omitempty"`
 	ThumbnailUrl                   *string `json:"thumbnail_url,omitempty"`
-	ButtonStyle                    int     `json:"button_style"`
+	ButtonStyle                    int     `json:"button_style,string"`
 	ButtonLabel                    string  `json:"button_label"`
 	FormId                         *int    `json:"form_id"`
 	NamingScheme                   *string `json:"naming_scheme"`
