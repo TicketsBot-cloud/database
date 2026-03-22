@@ -74,6 +74,8 @@ type Database struct {
 	PanelHereMention               *PanelHereMention
 	Participants                   *ParticipantTable
 	PatreonEntitlements            *PatreonEntitlements
+	PolarEntitlements              *PolarEntitlements
+	PolarProducts                  *PolarProducts
 	Permissions                    *Permissions
 	PremiumGuilds                  *PremiumGuilds
 	PremiumKeys                    *PremiumKeys
@@ -82,6 +84,7 @@ type Database struct {
 	ServerBlacklist                *ServerBlacklist
 	ServiceRatings                 *ServiceRatings
 	Settings                       *SettingsTable
+	Skus                           *Skus
 	StaffOverride                  *StaffOverride
 	SubscriptionSkus               *SubscriptionSkus
 	SupportTeam                    *SupportTeamTable
@@ -176,6 +179,8 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		PanelHereMention:               newPanelHereMention(pool),
 		Participants:                   newParticipantTable(pool),
 		PatreonEntitlements:            newPatreonEntitlements(pool),
+		PolarEntitlements:              newPolarEntitlements(pool),
+		PolarProducts:                  newPolarProducts(pool),
 		Permissions:                    newPermissions(pool),
 		PremiumGuilds:                  newPremiumGuilds(pool),
 		PremiumKeys:                    newPremiumKeys(pool),
@@ -184,6 +189,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		ServerBlacklist:                newServerBlacklist(pool),
 		ServiceRatings:                 newServiceRatings(pool),
 		Settings:                       newSettingsTable(pool),
+		Skus:                           newSkusTable(pool),
 		StaffOverride:                  newStaffOverride(pool),
 		SubscriptionSkus:               newSubscriptionSkusTable(pool),
 		SupportTeam:                    newSupportTeamTable(pool),
@@ -264,6 +270,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.Entitlements,
 		d.Experiment,
 		d.DiscordEntitlements, // depends on entitlements
+		d.Skus,                // must be created before discord_store_skus, subscription_skus, multi_server_skus, polar_products
 		d.DiscordStoreSkus,    // depends on skus
 		d.SubscriptionSkus,    // depends on skus
 		d.FeedbackEnabled,
@@ -294,6 +301,8 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.PanelUserMention,
 		d.PanelHereMention,
 		d.PatreonEntitlements,
+		d.PolarEntitlements, // depends on entitlements
+		d.PolarProducts,    // depends on skus
 		d.Permissions,
 		d.PremiumGuilds,
 		d.PremiumKeys,

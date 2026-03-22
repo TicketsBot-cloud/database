@@ -92,6 +92,18 @@ const (
 	AuditActionServerBlacklistRemove AuditActionType = 321
 
 	AuditActionPremiumKeyGenerate AuditActionType = 330
+
+	AuditActionPolarCheckoutCreate     AuditActionType = 340
+	AuditActionPolarSubscriptionCancel AuditActionType = 341
+	AuditActionPolarSubscriptionChange AuditActionType = 342
+
+	AuditActionPolarProductCreate AuditActionType = 350
+	AuditActionPolarProductUpdate AuditActionType = 351
+	AuditActionPolarProductDelete AuditActionType = 352
+
+	AuditActionSkuCreate AuditActionType = 360
+	AuditActionSkuUpdate AuditActionType = 361
+	AuditActionSkuDelete AuditActionType = 362
 )
 
 type AuditResourceType int16
@@ -120,6 +132,9 @@ const (
 	AuditResourceGlobalBlacklist       AuditResourceType = 21
 	AuditResourceServerBlacklist       AuditResourceType = 22
 	AuditResourcePremiumKey            AuditResourceType = 23
+	AuditResourcePolarSubscription     AuditResourceType = 24
+	AuditResourcePolarProduct          AuditResourceType = 25
+	AuditResourceSku                   AuditResourceType = 26
 )
 
 type AuditLogEntry struct {
