@@ -56,6 +56,8 @@ type Database struct {
 	GuildMetadata                  *GuildMetadataTable
 	ImportLogs                     *ImportLogsTable
 	ImportMappingTable             *ImportMappingTable
+	KBArticles                     *KBArticlesTable
+	KBCategories                   *KBCategoriesTable
 	LegacyPremiumEntitlementGuilds *LegacyPremiumEntitlementGuilds
 	LegacyPremiumEntitlements      *LegacyPremiumEntitlements
 	MultiPanels                    *MultiPanelTable
@@ -65,6 +67,7 @@ type Database struct {
 	OnCall                         *OnCall
 	Panel                          *PanelTable
 	PanelAccessControlRules        *PanelAccessControlRules
+	PanelKBCategories              *PanelKBCategoriesTable
 	PanelRoleMentions              *PanelRoleMentions
 	PanelSupportHours              *PanelSupportHoursTable
 	PanelSupportHoursSettings      *PanelSupportHoursSettingsTable
@@ -161,6 +164,8 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		GuildMetadata:                  newGuildMetadataTable(pool),
 		ImportLogs:                     newImportLogs(pool),
 		ImportMappingTable:             newImportMapping(pool),
+		KBArticles:                     newKBArticles(pool),
+		KBCategories:                   newKBCategories(pool),
 		LegacyPremiumEntitlementGuilds: newLegacyPremiumEntitlementGuildsTable(pool),
 		LegacyPremiumEntitlements:      newLegacyPremiumEntitlement(pool),
 		MultiPanels:                    newMultiMultiPanelTable(pool),
@@ -170,6 +175,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		OnCall:                         newOnCall(pool),
 		Panel:                          newPanelTable(pool),
 		PanelAccessControlRules:        newPanelAccessControlRules(pool),
+		PanelKBCategories:              newPanelKBCategories(pool),
 		PanelRoleMentions:              newPanelRoleMentions(pool),
 		PanelSupportHours:              newPanelSupportHoursTable(pool),
 		PanelSupportHoursSettings:      newPanelSupportHoursSettingsTable(pool),
@@ -317,6 +323,9 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.SupportTeamPermissions, // must be created after support_team table
 		d.PanelTeams,             // Must be created after panels & support teams tables
 		d.Tag,
+		d.KBCategories,        // Knowledge base categories
+		d.KBArticles,          // Knowledge base articles (references categories)
+		d.PanelKBCategories,   // Panel-to-KB-category associations
 		d.TicketLimit,
 		d.TicketPermissions,
 		d.Tickets,             // Must be created before members table

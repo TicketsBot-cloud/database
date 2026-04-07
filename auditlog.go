@@ -104,6 +104,13 @@ const (
 	AuditActionSkuCreate AuditActionType = 360
 	AuditActionSkuUpdate AuditActionType = 361
 	AuditActionSkuDelete AuditActionType = 362
+
+	AuditActionKBArticleCreate  AuditActionType = 370
+	AuditActionKBArticleUpdate  AuditActionType = 371
+	AuditActionKBArticleDelete  AuditActionType = 372
+	AuditActionKBCategoryCreate AuditActionType = 380
+	AuditActionKBCategoryUpdate AuditActionType = 381
+	AuditActionKBCategoryDelete AuditActionType = 382
 )
 
 type AuditResourceType int16
@@ -135,6 +142,8 @@ const (
 	AuditResourcePolarSubscription     AuditResourceType = 24
 	AuditResourcePolarProduct          AuditResourceType = 25
 	AuditResourceSku                   AuditResourceType = 26
+	AuditResourceKBArticle             AuditResourceType = 27
+	AuditResourceKBCategory            AuditResourceType = 28
 )
 
 type AuditLogEntry struct {
