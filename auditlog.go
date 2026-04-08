@@ -56,6 +56,7 @@ const (
 	AuditActionTicketSendTag           AuditActionType = 91
 	AuditActionTicketClose             AuditActionType = 92
 	AuditActionTicketCloseReasonUpdate AuditActionType = 93
+	AuditActionTicketCloseRequest      AuditActionType = 94
 
 	AuditActionGuildIntegrationActivate   AuditActionType = 100
 	AuditActionGuildIntegrationUpdate     AuditActionType = 101
