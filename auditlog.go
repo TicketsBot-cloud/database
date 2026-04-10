@@ -112,6 +112,8 @@ const (
 	AuditActionKBCategoryCreate AuditActionType = 380
 	AuditActionKBCategoryUpdate AuditActionType = 381
 	AuditActionKBCategoryDelete AuditActionType = 382
+
+	AuditActionKBSettingsUpdate AuditActionType = 390
 )
 
 type AuditResourceType int16
@@ -145,6 +147,7 @@ const (
 	AuditResourceSku                   AuditResourceType = 26
 	AuditResourceKBArticle             AuditResourceType = 27
 	AuditResourceKBCategory            AuditResourceType = 28
+	AuditResourceKBSettings            AuditResourceType = 29
 )
 
 type AuditLogEntry struct {

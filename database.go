@@ -58,6 +58,7 @@ type Database struct {
 	ImportMappingTable             *ImportMappingTable
 	KBArticles                     *KBArticlesTable
 	KBCategories                   *KBCategoriesTable
+	KBSettings                     *KBSettingsTable
 	LegacyPremiumEntitlementGuilds *LegacyPremiumEntitlementGuilds
 	LegacyPremiumEntitlements      *LegacyPremiumEntitlements
 	MultiPanels                    *MultiPanelTable
@@ -166,6 +167,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		ImportMappingTable:             newImportMapping(pool),
 		KBArticles:                     newKBArticles(pool),
 		KBCategories:                   newKBCategories(pool),
+		KBSettings:                     newKBSettings(pool),
 		LegacyPremiumEntitlementGuilds: newLegacyPremiumEntitlementGuildsTable(pool),
 		LegacyPremiumEntitlements:      newLegacyPremiumEntitlement(pool),
 		MultiPanels:                    newMultiMultiPanelTable(pool),
@@ -325,6 +327,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.Tag,
 		d.KBCategories,        // Knowledge base categories
 		d.KBArticles,          // Knowledge base articles (references categories)
+		d.KBSettings,          // Knowledge base customisation settings
 		d.PanelKBCategories,   // Panel-to-KB-category associations
 		d.TicketLimit,
 		d.TicketPermissions,
