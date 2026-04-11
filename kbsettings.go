@@ -105,6 +105,21 @@ ON CONFLICT("guild_id") DO UPDATE SET
 	return err
 }
 
+// GetGuildByDomain returns the guild ID that has claimed a given custom domain (verified or not).
+// Returns 0, false if no guild has this domain.
+func (t *KBSettingsTable) GetGuildByDomain(ctx context.Context, domain string) (uint64, bool, error) {
+	query := `SELECT "guild_id" FROM kb_settings WHERE "custom_domain" = $1 LIMIT 1;`
+	var guildId uint64
+	err := t.QueryRow(ctx, query, domain).Scan(&guildId)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return 0, false, nil
+		}
+		return 0, false, err
+	}
+	return guildId, true, nil
+}
+
 // GetAllVerifiedDomains returns all verified custom KB domains.
 func (t *KBSettingsTable) GetAllVerifiedDomains(ctx context.Context) ([]string, error) {
 	query := `SELECT "custom_domain" FROM kb_settings WHERE "custom_domain" IS NOT NULL AND "domain_verified" = true;`
