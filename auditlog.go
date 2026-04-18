@@ -76,6 +76,9 @@ const (
 	AuditActionUserIntegrationUpdate    AuditActionType = 201
 	AuditActionUserIntegrationDelete    AuditActionType = 202
 	AuditActionUserIntegrationSetPublic AuditActionType = 203
+	AuditActionUserIntegrationApprove   AuditActionType = 204
+	AuditActionUserIntegrationReject    AuditActionType = 205
+	AuditActionUserIntegrationUnapprove AuditActionType = 206
 
 	AuditActionWhitelabelCreate             AuditActionType = 210
 	AuditActionWhitelabelDelete             AuditActionType = 211
@@ -114,6 +117,12 @@ const (
 	AuditActionKBCategoryDelete AuditActionType = 382
 
 	AuditActionKBSettingsUpdate AuditActionType = 390
+
+	AuditActionGallerySubmit  AuditActionType = 400
+	AuditActionGalleryApprove AuditActionType = 401
+	AuditActionGalleryReject  AuditActionType = 402
+	AuditActionGalleryRemove  AuditActionType = 403
+	AuditActionGalleryImport  AuditActionType = 404
 )
 
 type AuditResourceType int16
@@ -148,6 +157,7 @@ const (
 	AuditResourceKBArticle             AuditResourceType = 27
 	AuditResourceKBCategory            AuditResourceType = 28
 	AuditResourceKBSettings            AuditResourceType = 29
+	AuditResourceGalleryListing        AuditResourceType = 30
 )
 
 type AuditLogEntry struct {

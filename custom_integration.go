@@ -2,6 +2,8 @@ package database
 
 import (
 	"context"
+	"time"
+
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -12,17 +14,20 @@ type CustomIntegrationTable struct {
 }
 
 type CustomIntegration struct {
-	Id               int     `json:"id"`
-	OwnerId          uint64  `json:"owner_id"`
-	HttpMethod       string  `json:"http_method"`
-	WebhookUrl       string  `json:"webhook_url"`
-	ValidationUrl    *string `json:"validation_url"`
-	Name             string  `json:"name"`
-	Description      string  `json:"description"`
-	ImageUrl         *string `json:"image_url"`
-	PrivacyPolicyUrl *string `json:"privacy_policy_url"`
-	Public           bool    `json:"public"`
-	Approved         bool    `json:"approved"`
+	Id               int        `json:"id"`
+	OwnerId          uint64     `json:"owner_id"`
+	HttpMethod       string     `json:"http_method"`
+	WebhookUrl       string     `json:"webhook_url"`
+	ValidationUrl    *string    `json:"validation_url"`
+	Name             string     `json:"name"`
+	Description      string     `json:"description"`
+	ImageUrl         *string    `json:"image_url"`
+	PrivacyPolicyUrl *string    `json:"privacy_policy_url"`
+	Public           bool       `json:"public"`
+	Approved         bool       `json:"approved"`
+	RejectionReason  *string    `json:"rejection_reason"`
+	ReviewedBy       *uint64    `json:"reviewed_by"`
+	ReviewedAt       *time.Time `json:"reviewed_at"`
 }
 
 type CustomIntegrationWithGuildCount struct {
@@ -58,11 +63,15 @@ CREATE TABLE IF NOT EXISTS custom_integrations(
 	PRIMARY KEY("id")
 );
 CREATE INDEX IF NOT EXISTS custom_integrations_owner_id ON custom_integrations("owner_id");
+
+ALTER TABLE custom_integrations ADD COLUMN IF NOT EXISTS "rejection_reason" TEXT DEFAULT NULL;
+ALTER TABLE custom_integrations ADD COLUMN IF NOT EXISTS "reviewed_by" int8 DEFAULT NULL;
+ALTER TABLE custom_integrations ADD COLUMN IF NOT EXISTS "reviewed_at" TIMESTAMP DEFAULT NULL;
 `
 }
 
 func (i *CustomIntegrationTable) Get(ctx context.Context, id int) (CustomIntegration, bool, error) {
-	query := `SELECT "id", "owner_id", "webhook_url", "validation_url", "http_method", "name", "description", "image_url", "privacy_policy_url", "public", "approved" FROM custom_integrations WHERE "id" = $1;`
+	query := `SELECT "id", "owner_id", "webhook_url", "validation_url", "http_method", "name", "description", "image_url", "privacy_policy_url", "public", "approved", "rejection_reason", "reviewed_by", "reviewed_at" FROM custom_integrations WHERE "id" = $1;`
 
 	var integration CustomIntegration
 	err := i.QueryRow(ctx, query, id).Scan(
@@ -77,6 +86,9 @@ func (i *CustomIntegrationTable) Get(ctx context.Context, id int) (CustomIntegra
 		&integration.PrivacyPolicyUrl,
 		&integration.Public,
 		&integration.Approved,
+		&integration.RejectionReason,
+		&integration.ReviewedBy,
+		&integration.ReviewedAt,
 	)
 
 	if err != nil {
@@ -92,7 +104,7 @@ func (i *CustomIntegrationTable) Get(ctx context.Context, id int) (CustomIntegra
 
 func (i *CustomIntegrationTable) GetAll(ctx context.Context, ids []int) ([]CustomIntegration, error) {
 	query := `
-SELECT "id", "owner_id", "webhook_url", "validation_url", "http_method", "name", "description", "image_url", "privacy_policy_url", "public", "approved"
+SELECT "id", "owner_id", "webhook_url", "validation_url", "http_method", "name", "description", "image_url", "privacy_policy_url", "public", "approved", "rejection_reason", "reviewed_by", "reviewed_at"
 FROM custom_integrations
 WHERE "id" = ANY($1);`
 
@@ -121,6 +133,9 @@ WHERE "id" = ANY($1);`
 			&integration.PrivacyPolicyUrl,
 			&integration.Public,
 			&integration.Approved,
+			&integration.RejectionReason,
+			&integration.ReviewedBy,
+			&integration.ReviewedAt,
 		)
 
 		if err != nil {
@@ -153,6 +168,9 @@ SELECT
 	integrations.privacy_policy_url,
 	integrations.public,
 	integrations.approved,
+	integrations.rejection_reason,
+	integrations.reviewed_by,
+	integrations.reviewed_at,
 	COALESCE(counts.count, 0) AS guild_count
 FROM custom_integrations AS integrations
 LEFT OUTER JOIN custom_integration_guild_counts counts ON integrations.id = counts.integration_id
@@ -178,6 +196,9 @@ WHERE "owner_id" = $1;`
 			&integration.PrivacyPolicyUrl,
 			&integration.Public,
 			&integration.Approved,
+			&integration.RejectionReason,
+			&integration.ReviewedBy,
+			&integration.ReviewedAt,
 			&integration.GuildCount,
 		)
 
@@ -189,6 +210,145 @@ WHERE "owner_id" = $1;`
 	}
 
 	return integrations, nil
+}
+
+func (i *CustomIntegrationTable) GetPendingReview(ctx context.Context, limit, offset int) ([]CustomIntegrationWithGuildCount, error) {
+	query := `
+SELECT
+	integrations.id,
+	integrations.owner_id,
+	integrations.webhook_url,
+	integrations.validation_url,
+	integrations.http_method,
+	integrations.name,
+	integrations.description,
+	integrations.image_url,
+	integrations.privacy_policy_url,
+	integrations.public,
+	integrations.approved,
+	integrations.rejection_reason,
+	integrations.reviewed_by,
+	integrations.reviewed_at,
+	COALESCE(counts.count, 0) AS guild_count
+FROM custom_integrations AS integrations
+LEFT OUTER JOIN custom_integration_guild_counts counts ON integrations.id = counts.integration_id
+WHERE integrations.public = TRUE AND integrations.approved = FALSE AND integrations.rejection_reason IS NULL
+ORDER BY integrations.id DESC
+LIMIT $1 OFFSET $2;`
+
+	return i.queryListing(ctx, query, limit, offset)
+}
+
+func (i *CustomIntegrationTable) GetApproved(ctx context.Context, limit, offset int) ([]CustomIntegrationWithGuildCount, error) {
+	query := `
+SELECT
+	integrations.id,
+	integrations.owner_id,
+	integrations.webhook_url,
+	integrations.validation_url,
+	integrations.http_method,
+	integrations.name,
+	integrations.description,
+	integrations.image_url,
+	integrations.privacy_policy_url,
+	integrations.public,
+	integrations.approved,
+	integrations.rejection_reason,
+	integrations.reviewed_by,
+	integrations.reviewed_at,
+	COALESCE(counts.count, 0) AS guild_count
+FROM custom_integrations AS integrations
+LEFT OUTER JOIN custom_integration_guild_counts counts ON integrations.id = counts.integration_id
+WHERE integrations.approved = TRUE
+ORDER BY integrations.id DESC
+LIMIT $1 OFFSET $2;`
+
+	return i.queryListing(ctx, query, limit, offset)
+}
+
+func (i *CustomIntegrationTable) GetRejected(ctx context.Context, limit, offset int) ([]CustomIntegrationWithGuildCount, error) {
+	query := `
+SELECT
+	integrations.id,
+	integrations.owner_id,
+	integrations.webhook_url,
+	integrations.validation_url,
+	integrations.http_method,
+	integrations.name,
+	integrations.description,
+	integrations.image_url,
+	integrations.privacy_policy_url,
+	integrations.public,
+	integrations.approved,
+	integrations.rejection_reason,
+	integrations.reviewed_by,
+	integrations.reviewed_at,
+	COALESCE(counts.count, 0) AS guild_count
+FROM custom_integrations AS integrations
+LEFT OUTER JOIN custom_integration_guild_counts counts ON integrations.id = counts.integration_id
+WHERE integrations.rejection_reason IS NOT NULL
+ORDER BY integrations.reviewed_at DESC NULLS LAST
+LIMIT $1 OFFSET $2;`
+
+	return i.queryListing(ctx, query, limit, offset)
+}
+
+func (i *CustomIntegrationTable) queryListing(ctx context.Context, query string, limit, offset int) ([]CustomIntegrationWithGuildCount, error) {
+	rows, err := i.Query(ctx, query, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	integrations := make([]CustomIntegrationWithGuildCount, 0)
+	for rows.Next() {
+		var integration CustomIntegrationWithGuildCount
+		err := rows.Scan(
+			&integration.Id,
+			&integration.OwnerId,
+			&integration.WebhookUrl,
+			&integration.ValidationUrl,
+			&integration.HttpMethod,
+			&integration.Name,
+			&integration.Description,
+			&integration.ImageUrl,
+			&integration.PrivacyPolicyUrl,
+			&integration.Public,
+			&integration.Approved,
+			&integration.RejectionReason,
+			&integration.ReviewedBy,
+			&integration.ReviewedAt,
+			&integration.GuildCount,
+		)
+
+		if err != nil {
+			return nil, err
+		}
+
+		integrations = append(integrations, integration)
+	}
+
+	return integrations, nil
+}
+
+func (i *CustomIntegrationTable) CountByStatus(ctx context.Context, status string) (int, error) {
+	var query string
+	switch status {
+	case "pending":
+		query = `SELECT COUNT(*) FROM custom_integrations WHERE "public" = TRUE AND "approved" = FALSE AND "rejection_reason" IS NULL;`
+	case "approved":
+		query = `SELECT COUNT(*) FROM custom_integrations WHERE "approved" = TRUE;`
+	case "rejected":
+		query = `SELECT COUNT(*) FROM custom_integrations WHERE "rejection_reason" IS NOT NULL;`
+	default:
+		return 0, pgx.ErrNoRows
+	}
+
+	var count int
+	if err := i.QueryRow(ctx, query).Scan(&count); err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }
 
 func (i *CustomIntegrationGuildsTable) GetAvailableIntegrationsWithActive(ctx context.Context, guildId, userId uint64, limit, offset int) ([]CustomIntegrationWithActive, error) {
@@ -210,12 +370,15 @@ SELECT
 	integrations.privacy_policy_url,
 	integrations.public,
 	integrations.approved,
+	integrations.rejection_reason,
+	integrations.reviewed_by,
+	integrations.reviewed_at,
 	COALESCE(counts.count, 0) AS guild_count,
 	CASE WHEN active.integration_id IS NOT NULL THEN TRUE ELSE FALSE END AS added
 FROM custom_integrations as integrations
 LEFT OUTER JOIN active ON active.integration_id = integrations.id
 LEFT OUTER JOIN custom_integration_guild_counts counts ON integrations.id = counts.integration_id
-WHERE active.integration_id IS NOT NULL OR 
+WHERE active.integration_id IS NOT NULL OR
 	((integrations.public = 't' AND integrations.approved = 't') OR integrations.owner_id = $2)
 ORDER BY active.integration_id NULLS LAST, guild_count DESC
 LIMIT $3 OFFSET $4;
@@ -241,6 +404,9 @@ LIMIT $3 OFFSET $4;
 			&integration.PrivacyPolicyUrl,
 			&integration.Public,
 			&integration.Approved,
+			&integration.RejectionReason,
+			&integration.ReviewedBy,
+			&integration.ReviewedAt,
 			&integration.GuildCount,
 			&integration.Active,
 		)
@@ -296,9 +462,54 @@ RETURNING "id";
 }
 
 func (i *CustomIntegrationTable) SetPublic(ctx context.Context, integrationId int) (err error) {
-	query := `UPDATE custom_integrations SET "public" = TRUE WHERE "id" = $1;`
+	query := `
+UPDATE custom_integrations
+SET "public" = TRUE,
+    "rejection_reason" = NULL,
+    "reviewed_by" = NULL,
+    "reviewed_at" = NULL
+WHERE "id" = $1;`
 	_, err = i.Exec(ctx, query, integrationId)
 	return
+}
+
+func (i *CustomIntegrationTable) Approve(ctx context.Context, integrationId int, reviewerId uint64) error {
+	query := `
+UPDATE custom_integrations
+SET "approved" = TRUE,
+    "public" = TRUE,
+    "rejection_reason" = NULL,
+    "reviewed_by" = $2,
+    "reviewed_at" = NOW()
+WHERE "id" = $1;`
+	_, err := i.Exec(ctx, query, integrationId, reviewerId)
+	return err
+}
+
+func (i *CustomIntegrationTable) Reject(ctx context.Context, integrationId int, reviewerId uint64, reason string) error {
+	query := `
+UPDATE custom_integrations
+SET "approved" = FALSE,
+    "public" = FALSE,
+    "rejection_reason" = $3,
+    "reviewed_by" = $2,
+    "reviewed_at" = NOW()
+WHERE "id" = $1;`
+	_, err := i.Exec(ctx, query, integrationId, reviewerId, reason)
+	return err
+}
+
+func (i *CustomIntegrationTable) Unapprove(ctx context.Context, integrationId int, reviewerId uint64) error {
+	query := `
+UPDATE custom_integrations
+SET "approved" = FALSE,
+    "public" = FALSE,
+    "rejection_reason" = NULL,
+    "reviewed_by" = $2,
+    "reviewed_at" = NOW()
+WHERE "id" = $1;`
+	_, err := i.Exec(ctx, query, integrationId, reviewerId)
+	return err
 }
 
 func (i *CustomIntegrationTable) Update(ctx context.Context, integration CustomIntegration) (err error) {
@@ -313,7 +524,10 @@ SET
 	"image_url" = $7,
 	"privacy_policy_url" = $8,
 	"public" = $9,
-	"approved" = $10
+	"approved" = $10,
+	"rejection_reason" = $11,
+	"reviewed_by" = $12,
+	"reviewed_at" = $13
 WHERE "id" = $1;
 `
 
@@ -330,6 +544,9 @@ WHERE "id" = $1;
 		integration.PrivacyPolicyUrl,
 		integration.Public,
 		integration.Approved,
+		integration.RejectionReason,
+		integration.ReviewedBy,
+		integration.ReviewedAt,
 	)
 
 	return

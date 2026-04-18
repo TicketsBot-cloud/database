@@ -50,6 +50,8 @@ type Database struct {
 	Forms                          *FormsTable
 	FormInputApiConfig             *FormInputApiConfigTable
 	FormInputApiHeaders            *FormInputApiHeaderTable
+	GalleryListings                *GalleryListingsTable
+	GalleryListingTags             *GalleryListingTagsTable
 	GdprLogs                       *GDPRLogsTable
 	GlobalBlacklist                *GlobalBlacklist
 	GuildLeaveTime                 *GuildLeaveTime
@@ -159,6 +161,8 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		FormInputApiConfig:             newFormInputApiConfigTable(pool),
 		FormInputApiHeaders:            newFormInputApiHeaderTable(pool),
 		FormInputOption:                newFormInputOptionTable(pool),
+		GalleryListings:                newGalleryListingsTable(pool),
+		GalleryListingTags:             newGalleryListingTagsTable(pool),
 		GdprLogs:                       newGDPRLogs(pool),
 		GlobalBlacklist:                newGlobalBlacklist(pool),
 		GuildLeaveTime:                 newGuildLeaveTime(pool),
@@ -344,6 +348,8 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.CategoryUpdateQueue, // Must be created after Tickets table
 		d.TicketLabels,            // Must be created after Tickets table
 		d.TicketLabelAssignments,  // Must be created after Tickets and TicketLabels tables
+		d.GalleryListings,         // Gallery panel listings
+		d.GalleryListingTags,      // Must be created after GalleryListings table
 		d.FirstResponseTime,
 		d.TicketMembers,
 		d.TicketClaims,
