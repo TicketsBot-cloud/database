@@ -78,6 +78,7 @@ SELECT
 	panels.hide_close_button,
 	panels.hide_close_with_reason_button,
 	panels.hide_claim_button,
+	panels.show_in_open_command,
 	multi_panel_targets.custom_label,
 	multi_panel_targets.description,
 	multi_panel_targets.custom_emoji_name,

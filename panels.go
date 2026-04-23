@@ -41,6 +41,7 @@ type Panel struct {
 	HideCloseButton                bool    `json:"hide_close_button"`
 	HideCloseWithReasonButton      bool    `json:"hide_close_with_reason_button"`
 	HideClaimButton                bool    `json:"hide_claim_button"`
+	ShowInOpenCommand              bool    `json:"show_in_open_command"`
 }
 
 type PanelWithWelcomeMessage struct {
@@ -94,6 +95,7 @@ CREATE TABLE IF NOT EXISTS panels(
 	"hide_close_button" bool NOT NULL DEFAULT false,
 	"hide_close_with_reason_button" bool NOT NULL DEFAULT false,
 	"hide_claim_button" bool NOT NULL DEFAULT false,
+	"show_in_open_command" bool NOT NULL DEFAULT false,
 	FOREIGN KEY ("welcome_message") REFERENCES embeds("id") ON DELETE SET NULL,
 	FOREIGN KEY ("form_id") REFERENCES forms("form_id"),
 	FOREIGN KEY ("exit_survey_form_id") REFERENCES forms("form_id"),
@@ -140,7 +142,8 @@ SELECT
 	ticket_limit,
 	hide_close_button,
 	hide_close_with_reason_button,
-	hide_claim_button
+	hide_claim_button,
+	show_in_open_command
 FROM panels
 WHERE "message_id" = $1;
 `
@@ -187,7 +190,8 @@ SELECT
 	ticket_limit,
 	hide_close_button,
 	hide_close_with_reason_button,
-	hide_claim_button
+	hide_claim_button,
+	show_in_open_command
 FROM panels
 WHERE "panel_id" = $1;
 `
@@ -235,6 +239,7 @@ SELECT
 	panels.hide_close_button,
 	panels.hide_close_with_reason_button,
 	panels.hide_claim_button,
+	panels.show_in_open_command,
 	embeds.id,
 	embeds.guild_id,
 	embeds.title,
@@ -343,7 +348,8 @@ SELECT
 	ticket_limit,
 	hide_close_button,
 	hide_close_with_reason_button,
-	hide_claim_button
+	hide_claim_button,
+	show_in_open_command
 FROM panels
 WHERE "guild_id" = $1 AND "custom_id" = $2;
 `
@@ -393,7 +399,8 @@ SELECT
 	ticket_limit,
 	hide_close_button,
 	hide_close_with_reason_button,
-	hide_claim_button
+	hide_claim_button,
+	show_in_open_command
 FROM panels
 WHERE "guild_id" = $1 AND "form_id" = $2;
 `
@@ -444,6 +451,7 @@ SELECT
 	panels.hide_close_button,
 	panels.hide_close_with_reason_button,
 	panels.hide_claim_button,
+	panels.show_in_open_command
 FROM panels
 INNER JOIN forms
 ON forms.form_id = panels.form_id
@@ -495,7 +503,8 @@ SELECT
 	ticket_limit,
 	hide_close_button,
 	hide_close_with_reason_button,
-	hide_claim_button
+	hide_claim_button,
+	show_in_open_command
 FROM panels
 WHERE "guild_id" = $1
 ORDER BY "panel_id" ASC;`
@@ -553,6 +562,7 @@ SELECT
 	panels.hide_close_button,
 	panels.hide_close_with_reason_button,
 	panels.hide_claim_button,
+	panels.show_in_open_command,
 	embeds.id,
 	embeds.guild_id,
 	embeds.title,
@@ -678,9 +688,10 @@ INSERT INTO panels(
 	"ticket_limit",
 	"hide_close_button",
 	"hide_close_with_reason_button",
-	"hide_claim_button"
+	"hide_claim_button",
+	"show_in_open_command"
 )
-VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31)
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)
 ON CONFLICT("message_id") DO NOTHING
 RETURNING "panel_id";`
 
@@ -716,6 +727,7 @@ RETURNING "panel_id";`
 		panel.HideCloseButton,
 		panel.HideCloseWithReasonButton,
 		panel.HideClaimButton,
+		panel.ShowInOpenCommand,
 	).Scan(&panelId)
 
 	return
@@ -768,7 +780,8 @@ UPDATE panels
 		"ticket_limit" = $28,
 		"hide_close_button" = $29,
 		"hide_close_with_reason_button" = $30,
-		"hide_claim_button" = $31
+		"hide_claim_button" = $31,
+		"show_in_open_command" = $32
 	WHERE
 		"panel_id" = $1
 ;`
@@ -805,6 +818,7 @@ UPDATE panels
 		panel.HideCloseButton,
 		panel.HideCloseWithReasonButton,
 		panel.HideClaimButton,
+		panel.ShowInOpenCommand,
 	)
 
 	return err
@@ -928,5 +942,6 @@ func (p *Panel) fieldPtrs() []interface{} {
 		&p.HideCloseButton,
 		&p.HideCloseWithReasonButton,
 		&p.HideClaimButton,
+		&p.ShowInOpenCommand,
 	}
 }
