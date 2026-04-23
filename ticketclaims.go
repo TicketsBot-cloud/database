@@ -39,17 +39,6 @@ func (c *TicketClaims) Get(ctx context.Context, guildId uint64, ticketId int) (u
 	return
 }
 
-func (c *TicketClaims) ImportBulk(ctx context.Context, guildId uint64, claims map[int]uint64) (err error) {
-	rows := make([][]interface{}, 0)
-
-	for ticketId, userId := range claims {
-		rows = append(rows, []interface{}{guildId, ticketId, userId})
-	}
-
-	_, err = c.CopyFrom(ctx, pgx.Identifier{"ticket_claims"}, []string{"guild_id", "ticket_id", "user_id"}, pgx.CopyFromRows(rows))
-	return
-}
-
 func (c *TicketClaims) Set(ctx context.Context, guildId uint64, ticketId int, userId uint64) (err error) {
 	query := `INSERT INTO ticket_claims("guild_id", "ticket_id", "user_id") VALUES($1, $2, $3) ON CONFLICT("guild_id", "ticket_id") DO UPDATE SET "user_id" = $3;`
 	_, err = c.Exec(ctx, query, guildId, ticketId, userId)
