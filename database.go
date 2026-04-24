@@ -18,6 +18,9 @@ type Database struct {
 	ArchiveMessages                *ArchiveMessages
 	AutoClose                      *AutoCloseTable
 	AutoCloseExclude               *AutoCloseExclude
+	Automations                    *AutomationsTable
+	AutomationRuns                 *AutomationRunsTable
+	AutomationCronSchedules        *AutomationCronSchedulesTable
 	Blacklist                      *Blacklist
 	BotStaff                       *BotStaff
 	CategoryUpdateQueue            *CategoryUpdateQueue
@@ -129,6 +132,9 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		ArchiveMessages:                newArchiveMessages(pool),
 		AutoClose:                      newAutoCloseTable(pool),
 		AutoCloseExclude:               newAutoCloseExclude(pool),
+		Automations:                    newAutomationsTable(pool),
+		AutomationRuns:                 newAutomationRunsTable(pool),
+		AutomationCronSchedules:        newAutomationCronSchedulesTable(pool),
 		Blacklist:                      newBlacklist(pool),
 		BotStaff:                       newBotStaff(pool),
 		CategoryUpdateQueue:            newCategoryUpdateQueueTable(pool),
@@ -365,6 +371,9 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.WhitelabelGuilds,
 		d.WhitelabelStatuses,
 		d.WhitelabelUsers,
+		d.Automations,
+		d.AutomationRuns,            // depends on automations
+		d.AutomationCronSchedules,   // depends on automations
 		d.AuditLog,
 	)
 }
