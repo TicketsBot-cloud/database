@@ -18,10 +18,17 @@ const (
 	GalleryListingStatusRejected GalleryListingStatus = "rejected"
 )
 
+const (
+	GalleryListingTypePanel = "panel"
+	GalleryListingTypeTag   = "tag"
+	GalleryListingTypeForm  = "form"
+)
+
 type GalleryListing struct {
 	Id              int                  `json:"id"`
 	SubmitterUserId uint64               `json:"submitter_user_id,string"`
 	SourceGuildId   uint64               `json:"source_guild_id,string"`
+	ListingType     string               `json:"listing_type"`
 	Name            string               `json:"name"`
 	Description     string               `json:"description"`
 	Category        string               `json:"category"`
@@ -31,7 +38,8 @@ type GalleryListing struct {
 	ReviewedAt      *time.Time           `json:"reviewed_at"`
 	ImportCount     int                  `json:"import_count"`
 	Featured        bool                 `json:"featured"`
-	// Visual design fields only — no operational settings
+	SnapshotData    []byte               `json:"snapshot_data"`
+	// Panel visual design fields — only populated for panel listings
 	Title          string  `json:"title"`
 	Content        string  `json:"content"`
 	Colour         int32   `json:"colour"`
@@ -61,6 +69,7 @@ CREATE TABLE IF NOT EXISTS gallery_listings (
 	"id"                 SERIAL PRIMARY KEY,
 	"submitter_user_id"  INT8 NOT NULL,
 	"source_guild_id"    INT8 NOT NULL,
+	"listing_type"       VARCHAR(20) NOT NULL DEFAULT 'panel',
 	"name"               VARCHAR(100) NOT NULL,
 	"description"        TEXT NOT NULL,
 	"category"           VARCHAR(50) NOT NULL,
@@ -70,13 +79,14 @@ CREATE TABLE IF NOT EXISTS gallery_listings (
 	"reviewed_at"        TIMESTAMPTZ,
 	"import_count"       INT NOT NULL DEFAULT 0,
 	"featured"           BOOL NOT NULL DEFAULT false,
-	"title"              VARCHAR(255) NOT NULL,
-	"content"            TEXT NOT NULL,
-	"colour"             INT4 NOT NULL,
+	"snapshot_data"      JSONB,
+	"title"              VARCHAR(255) NOT NULL DEFAULT '',
+	"content"            TEXT NOT NULL DEFAULT '',
+	"colour"             INT4 NOT NULL DEFAULT 0,
 	"image_url"          TEXT,
 	"thumbnail_url"      TEXT,
 	"button_style"       INT2 DEFAULT 1,
-	"button_label"       VARCHAR(80) NOT NULL,
+	"button_label"       VARCHAR(80) NOT NULL DEFAULT '',
 	"emoji_name"         VARCHAR(32),
 	"welcome_message"    JSONB,
 	"created_at"         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -84,6 +94,7 @@ CREATE TABLE IF NOT EXISTS gallery_listings (
 );
 CREATE INDEX IF NOT EXISTS gallery_listings_status_idx ON gallery_listings("status");
 CREATE INDEX IF NOT EXISTS gallery_listings_category_idx ON gallery_listings("category");
+CREATE INDEX IF NOT EXISTS gallery_listings_listing_type_idx ON gallery_listings("listing_type");
 CREATE INDEX IF NOT EXISTS gallery_listings_submitter_user_id_idx ON gallery_listings("submitter_user_id");
 CREATE INDEX IF NOT EXISTS gallery_listings_source_guild_id_idx ON gallery_listings("source_guild_id");
 CREATE INDEX IF NOT EXISTS gallery_listings_featured_idx ON gallery_listings("featured") WHERE "featured" = true;
@@ -97,6 +108,7 @@ func (l *GalleryListing) fieldPtrs() []interface{} {
 		&l.Id,
 		&l.SubmitterUserId,
 		&l.SourceGuildId,
+		&l.ListingType,
 		&l.Name,
 		&l.Description,
 		&l.Category,
@@ -106,6 +118,7 @@ func (l *GalleryListing) fieldPtrs() []interface{} {
 		&l.ReviewedAt,
 		&l.ImportCount,
 		&l.Featured,
+		&l.SnapshotData,
 		&l.Title,
 		&l.Content,
 		&l.Colour,
@@ -124,6 +137,7 @@ const galleryListingSelectColumns = `
 	"id",
 	"submitter_user_id",
 	"source_guild_id",
+	"listing_type",
 	"name",
 	"description",
 	"category",
@@ -133,6 +147,7 @@ const galleryListingSelectColumns = `
 	"reviewed_at",
 	"import_count",
 	"featured",
+	"snapshot_data",
 	"title",
 	"content",
 	"colour",
@@ -151,10 +166,12 @@ func (t *GalleryListingsTable) Create(ctx context.Context, listing GalleryListin
 INSERT INTO gallery_listings (
 	"submitter_user_id",
 	"source_guild_id",
+	"listing_type",
 	"name",
 	"description",
 	"category",
 	"status",
+	"snapshot_data",
 	"title",
 	"content",
 	"colour",
@@ -165,17 +182,24 @@ INSERT INTO gallery_listings (
 	"emoji_name",
 	"welcome_message"
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 RETURNING "id";`
+
+	listingType := listing.ListingType
+	if listingType == "" {
+		listingType = GalleryListingTypePanel
+	}
 
 	var id int
 	err := t.QueryRow(ctx, query,
 		listing.SubmitterUserId,
 		listing.SourceGuildId,
+		listingType,
 		listing.Name,
 		listing.Description,
 		listing.Category,
 		listing.Status,
+		listing.SnapshotData,
 		listing.Title,
 		listing.Content,
 		listing.Colour,
@@ -207,11 +231,17 @@ func (t *GalleryListingsTable) GetById(ctx context.Context, id int) (listing Gal
 // GetApproved returns paginated approved listings with optional filters.
 // Sort must be "popular" (import_count DESC) or "recent" (created_at DESC).
 // Search matches name or description using case-insensitive ILIKE.
-func (t *GalleryListingsTable) GetApproved(ctx context.Context, category string, tag string, search string, sort string, page int, pageSize int) ([]GalleryListing, int, error) {
+// listingType filters by type when non-empty ("panel", "tag", "form").
+func (t *GalleryListingsTable) GetApproved(ctx context.Context, category string, tag string, search string, sort string, listingType string, page int, pageSize int) ([]GalleryListing, int, error) {
 	var conditions []string
 	var args []interface{}
 
 	conditions = append(conditions, `"status" = 'approved'`)
+
+	if listingType != "" {
+		args = append(args, listingType)
+		conditions = append(conditions, fmt.Sprintf(`"listing_type" = $%d`, len(args)))
+	}
 
 	if category != "" {
 		args = append(args, category)
@@ -419,7 +449,7 @@ func (t *GalleryListingsTable) UpdateMetadata(ctx context.Context, id int, name 
 	return err
 }
 
-// Resubmit replaces a listing's panel snapshot and metadata, resetting it for review.
+// Resubmit replaces a listing's snapshot and metadata, resetting it for review.
 func (t *GalleryListingsTable) Resubmit(ctx context.Context, listing GalleryListing) error {
 	query := `
 UPDATE gallery_listings SET
@@ -430,15 +460,16 @@ UPDATE gallery_listings SET
 	"review_note" = NULL,
 	"reviewed_by" = NULL,
 	"reviewed_at" = NULL,
-	"title" = $6,
-	"content" = $7,
-	"colour" = $8,
-	"image_url" = $9,
-	"thumbnail_url" = $10,
-	"button_style" = $11,
-	"button_label" = $12,
-	"emoji_name" = $13,
-	"welcome_message" = $14,
+	"snapshot_data" = $6,
+	"title" = $7,
+	"content" = $8,
+	"colour" = $9,
+	"image_url" = $10,
+	"thumbnail_url" = $11,
+	"button_style" = $12,
+	"button_label" = $13,
+	"emoji_name" = $14,
+	"welcome_message" = $15,
 	"updated_at" = NOW()
 WHERE "id" = $1;`
 
@@ -448,6 +479,7 @@ WHERE "id" = $1;`
 		listing.Description,
 		listing.Category,
 		listing.Status,
+		listing.SnapshotData,
 		listing.Title,
 		listing.Content,
 		listing.Colour,
