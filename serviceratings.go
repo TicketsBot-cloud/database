@@ -61,7 +61,6 @@ WHERE service_ratings.guild_id = $1 AND ticket_claims.user_id = $2;
 	return
 }
 
-// TODO: Materialized view?
 func (r *ServiceRatings) GetAverage(ctx context.Context, guildId uint64) (average float32, err error) {
 	// Returns NULL if no ratings
 	var f *float32
@@ -75,7 +74,6 @@ func (r *ServiceRatings) GetAverage(ctx context.Context, guildId uint64) (averag
 	return
 }
 
-// TODO: Materialized view?
 func (r *ServiceRatings) GetAverageClaimedBy(ctx context.Context, guildId, userId uint64) (average float32, err error) {
 	// Returns NULL if no tickets claimed
 	var f *float32

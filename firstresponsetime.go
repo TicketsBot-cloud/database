@@ -100,6 +100,28 @@ func (f *FirstResponseTime) GetAverageAllTimeUser(ctx context.Context, guildId, 
 	return
 }
 
+func (f *FirstResponseTime) GetAverageTripleWindow(ctx context.Context, guildId uint64) (TripleWindow, error) {
+	query := `
+SELECT
+    AVG(frt.response_time),
+    AVG(frt.response_time) FILTER (WHERE t.open_time > NOW() - INTERVAL '30 days'),
+    AVG(frt.response_time) FILTER (WHERE t.open_time > NOW() - INTERVAL '7 days')
+FROM first_response_time frt
+INNER JOIN tickets t ON frt.guild_id = t.guild_id AND frt.ticket_id = t.id
+WHERE frt.guild_id = $1;`
+
+	var allTime, monthly, weekly *time.Duration
+	if err := f.QueryRow(ctx, query, guildId).Scan(&allTime, &monthly, &weekly); err != nil {
+		return TripleWindow{}, err
+	}
+
+	return TripleWindow{
+		AllTime: allTime,
+		Monthly: monthly,
+		Weekly:  weekly,
+	}, nil
+}
+
 func (f *FirstResponseTime) Set(ctx context.Context, guildId, userId uint64, ticketId int, responseTime time.Duration) (err error) {
 	query := `INSERT INTO first_response_time("guild_id", "ticket_id", "user_id", "response_time") VALUES($1, $2, $3, $4) ON CONFLICT("guild_id", "ticket_id") DO NOTHING;`
 	_, err = f.Exec(ctx, query, guildId, ticketId, userId, responseTime)

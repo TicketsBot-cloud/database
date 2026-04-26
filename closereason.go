@@ -118,3 +118,69 @@ func (c *CloseMetadataTable) Delete(ctx context.Context, guildId uint64, ticketI
 	_, err = c.Exec(ctx, query, guildId, ticketId)
 	return
 }
+
+func (c *CloseMetadataTable) GetTopCloseReasons(ctx context.Context, guildId uint64, panelId *int, limit int) ([]string, error) {
+	query := `
+SELECT cr.close_reason
+FROM close_reason cr
+INNER JOIN tickets t ON cr.guild_id = t.guild_id AND cr.ticket_id = t.id
+WHERE cr.guild_id = $1
+  AND ($2::int IS NULL OR t.panel_id = $2)
+  AND cr.close_reason IS NOT NULL
+  AND cr.close_reason != ''
+  AND cr.close_reason != 'Automatically closed due to inactivity'
+GROUP BY cr.close_reason
+ORDER BY COUNT(*) DESC
+LIMIT $3;`
+
+	rows, err := c.Query(ctx, query, guildId, panelId, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var reasons []string
+	for rows.Next() {
+		var reason string
+		if err := rows.Scan(&reason); err != nil {
+			return nil, err
+		}
+		reasons = append(reasons, reason)
+	}
+
+	return reasons, nil
+}
+
+func (c *CloseMetadataTable) GetTopCloseReasonsContaining(ctx context.Context, guildId uint64, panelId *int, contains string, limit int) ([]string, error) {
+	query := `
+SELECT cr.close_reason
+FROM close_reason cr
+INNER JOIN tickets t ON cr.guild_id = t.guild_id AND cr.ticket_id = t.id
+WHERE cr.guild_id = $1
+  AND ($2::int IS NULL OR t.panel_id = $2)
+  AND cr.close_reason IS NOT NULL
+  AND cr.close_reason != ''
+  AND cr.close_reason != 'Automatically closed due to inactivity'
+  AND LOWER(cr.close_reason) LIKE '%' || LOWER($3) || '%'
+GROUP BY cr.close_reason
+ORDER BY CASE WHEN LOWER(cr.close_reason) LIKE LOWER($3) || '%' THEN 0 ELSE 1 END,
+         COUNT(*) DESC
+LIMIT $4;`
+
+	rows, err := c.Query(ctx, query, guildId, panelId, contains, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var reasons []string
+	for rows.Next() {
+		var reason string
+		if err := rows.Scan(&reason); err != nil {
+			return nil, err
+		}
+		reasons = append(reasons, reason)
+	}
+
+	return reasons, nil
+}

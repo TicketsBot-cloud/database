@@ -104,6 +104,7 @@ CREATE TABLE guild_ticket_counters (
 );
 CREATE INDEX IF NOT EXISTS tickets_channel_id ON tickets("channel_id");
 CREATE INDEX IF NOT EXISTS tickets_panel_id ON tickets("panel_id");
+CREATE INDEX IF NOT EXISTS tickets_guild_id_open_time ON tickets("guild_id", "open_time");
 `
 }
 
@@ -1356,4 +1357,59 @@ SET last_ticket_id = EXCLUDED.last_ticket_id;`
 
 	_, err = t.Exec(ctx, query, guildId)
 	return
+}
+
+func (t *TicketTable) GetTicketsPerDay(ctx context.Context, guildId uint64, nDays int) ([]CountOnDate, error) {
+	query := `
+SELECT d::date AS date, COUNT(t.id) AS count
+FROM generate_series(CURRENT_DATE - ($2 - 1) * INTERVAL '1 day', CURRENT_DATE, '1 day') AS d
+LEFT JOIN tickets t ON t.guild_id = $1 AND date_trunc('day', t.open_time AT TIME ZONE 'UTC') = d::date
+GROUP BY d::date
+ORDER BY d::date DESC;`
+
+	rows, err := t.Query(ctx, query, guildId, nDays)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	counts := make([]CountOnDate, 0, nDays)
+	for rows.Next() {
+		var c CountOnDate
+		if err := rows.Scan(&c.Date, &c.Count); err != nil {
+			return nil, err
+		}
+		counts = append(counts, c)
+	}
+
+	return counts, nil
+}
+
+func (t *TicketTable) GetTicketDurationTripleWindow(ctx context.Context, guildId uint64) (TripleWindow, error) {
+	query := `
+SELECT
+    AVG(EXTRACT(EPOCH FROM (close_time - open_time))) FILTER (WHERE close_time IS NOT NULL),
+    AVG(EXTRACT(EPOCH FROM (close_time - open_time))) FILTER (WHERE close_time IS NOT NULL AND close_time > NOW() - INTERVAL '30 days'),
+    AVG(EXTRACT(EPOCH FROM (close_time - open_time))) FILTER (WHERE close_time IS NOT NULL AND close_time > NOW() - INTERVAL '7 days')
+FROM tickets
+WHERE guild_id = $1;`
+
+	var allTimeSecs, monthlySecs, weeklySecs *float64
+	if err := t.QueryRow(ctx, query, guildId).Scan(&allTimeSecs, &monthlySecs, &weeklySecs); err != nil {
+		return TripleWindow{}, err
+	}
+
+	return TripleWindow{
+		AllTime: secondsToDuration(allTimeSecs),
+		Monthly: secondsToDuration(monthlySecs),
+		Weekly:  secondsToDuration(weeklySecs),
+	}, nil
+}
+
+func secondsToDuration(secs *float64) *time.Duration {
+	if secs == nil {
+		return nil
+	}
+	d := time.Duration(*secs * float64(time.Second))
+	return &d
 }
