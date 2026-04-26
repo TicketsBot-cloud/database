@@ -86,8 +86,9 @@ const (
 	AuditActionWhitelabelStatusSet          AuditActionType = 213
 	AuditActionWhitelabelStatusDelete       AuditActionType = 214
 
-	AuditActionBotStaffAdd    AuditActionType = 300
-	AuditActionBotStaffRemove AuditActionType = 301
+	AuditActionBotStaffAdd        AuditActionType = 300
+	AuditActionBotStaffRemove     AuditActionType = 301
+	AuditActionBotStaffTierUpdate AuditActionType = 302
 
 	AuditActionGlobalBlacklistAdd    AuditActionType = 310
 	AuditActionGlobalBlacklistRemove AuditActionType = 311
