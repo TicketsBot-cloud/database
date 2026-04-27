@@ -1413,3 +1413,88 @@ func secondsToDuration(secs *float64) *time.Duration {
 	d := time.Duration(*secs * float64(time.Second))
 	return &d
 }
+
+func (t *TicketTable) GetTicketCountByPanel(ctx context.Context, guildId uint64, nDays int) ([]PanelTicketCount, error) {
+	query := `
+SELECT t.panel_id, COALESCE(p.title, 'No Panel'), COUNT(*)
+FROM tickets t
+LEFT JOIN panels p ON t.panel_id = p.panel_id
+WHERE t.guild_id = $1 AND t.open_time > CURRENT_DATE - ($2 - 1) * INTERVAL '1 day'
+GROUP BY t.panel_id, p.title
+ORDER BY COUNT(*) DESC;`
+
+	rows, err := t.Query(ctx, query, guildId, nDays)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []PanelTicketCount
+	for rows.Next() {
+		var r PanelTicketCount
+		if err := rows.Scan(&r.PanelId, &r.PanelTitle, &r.Count); err != nil {
+			return nil, err
+		}
+		results = append(results, r)
+	}
+
+	return results, nil
+}
+
+func (t *TicketTable) GetThreadChannelSplit(ctx context.Context, guildId uint64, nDays int) (ThreadChannelSplit, error) {
+	query := `
+SELECT
+    COUNT(*) FILTER (WHERE is_thread = true),
+    COUNT(*) FILTER (WHERE is_thread = false)
+FROM tickets
+WHERE guild_id = $1 AND open_time > CURRENT_DATE - ($2 - 1) * INTERVAL '1 day';`
+
+	var split ThreadChannelSplit
+	if err := t.QueryRow(ctx, query, guildId, nDays).Scan(&split.ThreadCount, &split.ChannelCount); err != nil {
+		return ThreadChannelSplit{}, err
+	}
+
+	return split, nil
+}
+
+func (t *TicketTable) GetBacklogTrend(ctx context.Context, guildId uint64, nDays int) ([]CountOnDate, error) {
+	query := `
+WITH opens AS (
+    SELECT date_trunc('day', open_time AT TIME ZONE 'UTC')::date AS date, COUNT(*) AS cnt
+    FROM tickets WHERE guild_id = $1 GROUP BY 1
+), closes AS (
+    SELECT date_trunc('day', close_time AT TIME ZONE 'UTC')::date AS date, COUNT(*) AS cnt
+    FROM tickets WHERE guild_id = $1 AND close_time IS NOT NULL GROUP BY 1
+), series AS (
+    SELECT d::date AS date FROM generate_series(CURRENT_DATE - ($2 - 1) * INTERVAL '1 day', CURRENT_DATE, '1 day') d
+), base_open AS (
+    SELECT COUNT(*) AS cnt FROM tickets WHERE guild_id = $1
+        AND open_time < CURRENT_DATE - ($2 - 1) * INTERVAL '1 day'
+        AND (close_time IS NULL OR close_time >= CURRENT_DATE - ($2 - 1) * INTERVAL '1 day')
+)
+SELECT s.date,
+    (SELECT cnt FROM base_open)
+    + SUM(COALESCE(o.cnt, 0)) OVER (ORDER BY s.date)
+    - SUM(COALESCE(c.cnt, 0)) OVER (ORDER BY s.date) AS count
+FROM series s
+LEFT JOIN opens o ON o.date = s.date
+LEFT JOIN closes c ON c.date = s.date
+ORDER BY s.date;`
+
+	rows, err := t.Query(ctx, query, guildId, nDays)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	counts := make([]CountOnDate, 0, nDays)
+	for rows.Next() {
+		var c CountOnDate
+		if err := rows.Scan(&c.Date, &c.Count); err != nil {
+			return nil, err
+		}
+		counts = append(counts, c)
+	}
+
+	return counts, nil
+}

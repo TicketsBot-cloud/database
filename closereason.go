@@ -151,6 +151,23 @@ LIMIT $3;`
 	return reasons, nil
 }
 
+func (c *CloseMetadataTable) GetAutoCloseVsManualClose(ctx context.Context, guildId uint64, nDays int) (AutoCloseStats, error) {
+	query := `
+SELECT
+    COUNT(*) FILTER (WHERE cr.closed_by IS NULL),
+    COUNT(*) FILTER (WHERE cr.closed_by IS NOT NULL)
+FROM close_reason cr
+INNER JOIN tickets t ON cr.guild_id = t.guild_id AND cr.ticket_id = t.id
+WHERE cr.guild_id = $1 AND t.close_time > CURRENT_DATE - ($2 - 1) * INTERVAL '1 day';`
+
+	var stats AutoCloseStats
+	if err := c.QueryRow(ctx, query, guildId, nDays).Scan(&stats.AutoClosed, &stats.ManualClosed); err != nil {
+		return AutoCloseStats{}, err
+	}
+
+	return stats, nil
+}
+
 func (c *CloseMetadataTable) GetTopCloseReasonsContaining(ctx context.Context, guildId uint64, panelId *int, contains string, limit int) ([]string, error) {
 	query := `
 SELECT cr.close_reason
