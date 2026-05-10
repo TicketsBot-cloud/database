@@ -29,14 +29,10 @@ const (
 )
 
 type ClaimSettings struct {
-	SupportCanView            bool                     `json:"support_can_view"`
-	SupportCanType            bool                     `json:"support_can_type"`
-	SwitchPanelClaimBehavior  SwitchPanelClaimBehavior `json:"switch_panel_claim_behavior"`
+	SwitchPanelClaimBehavior SwitchPanelClaimBehavior `json:"switch_panel_claim_behavior"`
 }
 
 var defaultClaimSettings = ClaimSettings{
-	SupportCanView:           true,
-	SupportCanType:           false,
 	SwitchPanelClaimBehavior: SwitchPanelAutoUnclaim,
 }
 
@@ -45,17 +41,13 @@ type ClaimSettingsTable struct {
 }
 
 func newClaimSettingsTable(db *pgxpool.Pool) *ClaimSettingsTable {
-	return &ClaimSettingsTable{
-		db,
-	}
+	return &ClaimSettingsTable{db}
 }
 
 func (c ClaimSettingsTable) Schema() string {
 	return `
 CREATE TABLE IF NOT EXISTS claim_settings(
 	"guild_id" int8 NOT NULL,
-	"support_can_view" bool NOT NULL,
-	"support_can_type" bool NOT NULL,
 	"switch_panel_claim_behavior" int2 NOT NULL DEFAULT 0,
 	PRIMARY KEY("guild_id")
 );
@@ -63,37 +55,22 @@ CREATE TABLE IF NOT EXISTS claim_settings(
 }
 
 func (c *ClaimSettingsTable) Get(ctx context.Context, guildId uint64) (settings ClaimSettings, e error) {
-	query := `SELECT "support_can_view", "support_can_type", "switch_panel_claim_behavior" FROM claim_settings WHERE "guild_id" = $1;`
-	if err := c.QueryRow(ctx, query, guildId).Scan(&settings.SupportCanView, &settings.SupportCanType, &settings.SwitchPanelClaimBehavior); err != nil {
+	query := `SELECT "switch_panel_claim_behavior" FROM claim_settings WHERE "guild_id" = $1;`
+	if err := c.QueryRow(ctx, query, guildId).Scan(&settings.SwitchPanelClaimBehavior); err != nil {
 		if err == pgx.ErrNoRows {
 			settings = defaultClaimSettings
 		} else {
 			e = err
 		}
 	}
-
 	return
 }
 
 func (c *ClaimSettingsTable) Set(ctx context.Context, guildId uint64, settings ClaimSettings) (err error) {
 	query := `
-INSERT INTO claim_settings("guild_id", "support_can_view", "support_can_type", "switch_panel_claim_behavior") VALUES($1, $2, $3, $4)
-	ON CONFLICT("guild_id") DO UPDATE SET
-	"support_can_view" = $2,
-	"support_can_type" = $3,
-	"switch_panel_claim_behavior" = $4;`
+INSERT INTO claim_settings("guild_id", "switch_panel_claim_behavior") VALUES($1, $2)
+ON CONFLICT("guild_id") DO UPDATE SET "switch_panel_claim_behavior" = $2;`
 
-	_, err = c.Exec(ctx, query, guildId, settings.SupportCanView, settings.SupportCanType, settings.SwitchPanelClaimBehavior)
-	return
-}
-
-func (c *ClaimSettingsTable) SetSwitchPanelClaimBehavior(ctx context.Context, guildId uint64, behavior SwitchPanelClaimBehavior) (err error) {
-	query := `
-INSERT INTO claim_settings("guild_id", "support_can_view", "support_can_type", "switch_panel_claim_behavior")
-VALUES($1, $2, $3, $4)
-ON CONFLICT("guild_id") DO UPDATE SET "switch_panel_claim_behavior" = $4;`
-
-	defaults := defaultClaimSettings
-	_, err = c.Exec(ctx, query, guildId, defaults.SupportCanView, defaults.SupportCanType, behavior)
+	_, err = c.Exec(ctx, query, guildId, settings.SwitchPanelClaimBehavior)
 	return
 }
