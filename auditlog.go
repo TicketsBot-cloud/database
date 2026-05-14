@@ -124,6 +124,9 @@ const (
 	AuditActionGalleryReject  AuditActionType = 402
 	AuditActionGalleryRemove  AuditActionType = 403
 	AuditActionGalleryImport  AuditActionType = 404
+
+	AuditActionOnboardingComplete AuditActionType = 410
+	AuditActionOnboardingSkip     AuditActionType = 411
 )
 
 type AuditResourceType int16
@@ -159,6 +162,7 @@ const (
 	AuditResourceKBCategory            AuditResourceType = 28
 	AuditResourceKBSettings            AuditResourceType = 29
 	AuditResourceGalleryListing        AuditResourceType = 30
+	AuditResourceOnboarding            AuditResourceType = 31
 )
 
 type AuditLogEntry struct {

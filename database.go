@@ -34,6 +34,7 @@ type Database struct {
 	CustomIntegrationSecretValues  *CustomIntegrationSecretValuesTable
 	CustomIntegrationSecrets       *CustomIntegrationSecretsTable
 	CustomColours                  *CustomColours
+	DashboardOnboarding            *DashboardOnboardingTable
 	DashboardUsers                 *DashboardUsersTable
 	ArchiveDmMessages              *ArchiveDmMessages
 	DiscordEntitlements            *DiscordEntitlements
@@ -143,6 +144,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		CustomIntegrationSecretValues:  newCustomIntegrationSecretValuesTable(pool),
 		CustomIntegrationSecrets:       newCustomIntegrationSecretsTable(pool),
 		CustomColours:                  newCustomColours(pool),
+		DashboardOnboarding:            newDashboardOnboardingTable(pool),
 		DashboardUsers:                 newDashboardUsersTable(pool),
 		ArchiveDmMessages:              newArchiveDmMessages(pool),
 		DiscordEntitlements:            newDiscordEntitlementsTable(pool),
@@ -290,6 +292,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.GdprLogs,
 		d.GlobalBlacklist,
 		d.GuildLeaveTime,
+		d.DashboardOnboarding,
 		d.GuildMetadata,
 		d.LegacyPremiumEntitlements,
 		d.LegacyPremiumEntitlementGuilds,
