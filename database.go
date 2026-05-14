@@ -16,14 +16,12 @@ type Database struct {
 	ArchiveChannel                 *ArchiveChannel
 	AuditLog                       *AuditLogTable
 	ArchiveMessages                *ArchiveMessages
-	AutoClose                      *AutoCloseTable
 	AutoCloseExclude               *AutoCloseExclude
 	Blacklist                      *Blacklist
 	BotStaff                       *BotStaff
 	CategoryUpdateQueue            *CategoryUpdateQueue
 	ChannelCategory                *ChannelCategory
 	ClaimSettings                  *ClaimSettingsTable
-	CloseConfirmation              *CloseConfirmation
 	CloseReason                    *CloseMetadataTable
 	CloseRequest                   *CloseRequestTable
 	CustomIntegrations             *CustomIntegrationTable
@@ -44,7 +42,6 @@ type Database struct {
 	Entitlements                   *Entitlements
 	ExitSurveyResponses            *ExitSurveyResponses
 	Experiment                     *ExperimentTable
-	FeedbackEnabled                *FeedbackEnabled
 	FirstResponseTime              *FirstResponseTime
 	FormInput                      *FormInputTable
 	FormInputOption                *FormInputOptionTable
@@ -75,6 +72,7 @@ type Database struct {
 	PanelSupportHoursSettings      *PanelSupportHoursSettingsTable
 	PanelTeams                     *PanelTeamsTable
 	PanelTicketPermissions         *PanelTicketPermissionsTable
+	PanelAutoClose                 *PanelAutoCloseTable
 	PanelUserMention               *PanelUserMention
 	PanelHereMention               *PanelHereMention
 	Participants                   *ParticipantTable
@@ -104,7 +102,6 @@ type Database struct {
 	TicketPermissions              *TicketPermissionsTable
 	Tickets                        *TicketTable
 	UsedKeys                       *UsedKeys
-	UsersCanClose                  *UsersCanClose
 	UserGuilds                     *UserGuildsTable
 	VoteCredits                    *VoteCredits
 	Votes                          *Votes
@@ -126,14 +123,12 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		ArchiveChannel:                 newArchiveChannel(pool),
 		AuditLog:                       newAuditLogTable(pool),
 		ArchiveMessages:                newArchiveMessages(pool),
-		AutoClose:                      newAutoCloseTable(pool),
 		AutoCloseExclude:               newAutoCloseExclude(pool),
 		Blacklist:                      newBlacklist(pool),
 		BotStaff:                       newBotStaff(pool),
 		CategoryUpdateQueue:            newCategoryUpdateQueueTable(pool),
 		ChannelCategory:                newChannelCategory(pool),
 		ClaimSettings:                  newClaimSettingsTable(pool),
-		CloseConfirmation:              newCloseConfirmation(pool),
 		CloseReason:                    newCloseReasonTable(pool),
 		CloseRequest:                   newCloseRequestTable(pool),
 		CustomIntegrations:             newCustomIntegrationTable(pool),
@@ -154,7 +149,6 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		Entitlements:                   newEntitlementsTable(pool),
 		ExitSurveyResponses:            newExitSurveyResponses(pool),
 		Experiment:                     newExperimentTable(pool),
-		FeedbackEnabled:                newFeedbackEnabled(pool),
 		FirstResponseTime:              newFirstResponseTime(pool),
 		FormInput:                      newFormInputTable(pool),
 		Forms:                          newFormsTable(pool),
@@ -185,6 +179,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		PanelSupportHoursSettings:      newPanelSupportHoursSettingsTable(pool),
 		PanelTeams:                     newPanelTeamsTable(pool),
 		PanelTicketPermissions:         newPanelTicketPermissionsTable(pool),
+		PanelAutoClose:                 newPanelAutoCloseTable(pool),
 		PanelUserMention:               newPanelUserMention(pool),
 		PanelHereMention:               newPanelHereMention(pool),
 		Participants:                   newParticipantTable(pool),
@@ -214,7 +209,6 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		TicketPermissions:              newTicketPermissionsTable(pool),
 		Tickets:                        newTicketTable(pool),
 		UsedKeys:                       newUsedKeys(pool),
-		UsersCanClose:                  newUsersCanClose(pool),
 		UserGuilds:                     newUserGuildsTable(pool),
 		VoteCredits:                    newVoteCreditsTable(pool),
 		Votes:                          newVotes(pool),
@@ -260,12 +254,10 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 	mustCreate(ctx, pool,
 		d.ActiveLanguage,
 		d.ArchiveChannel,
-		d.AutoClose,
 		d.Blacklist,
 		d.BotStaff,
 		d.ChannelCategory,
 		d.ClaimSettings,
-		d.CloseConfirmation,
 		d.CustomIntegrations,
 		d.CustomIntegrationGuilds,
 		d.CustomIntegrationGuildCounts,
@@ -283,7 +275,6 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.Skus,                // must be created before discord_store_skus, subscription_skus, multi_server_skus, polar_products
 		d.DiscordStoreSkus,    // depends on skus
 		d.SubscriptionSkus,    // depends on skus
-		d.FeedbackEnabled,
 		d.Forms,
 		d.FormInput,           // depends on forms
 		d.FormInputOption,     // depends on form inputs
@@ -307,6 +298,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.PanelRoleMentions,
 		d.PanelSupportHours,         // must be created after panels table
 		d.PanelSupportHoursSettings, // must be created after panels table
+		d.PanelAutoClose,          // must be created after panels table
 		d.PanelUserMention,
 		d.PanelHereMention,
 		d.PatreonEntitlements,
@@ -351,7 +343,6 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.TicketMembers,
 		d.TicketClaims,
 		d.UsedKeys,
-		d.UsersCanClose,
 		d.UserGuilds,
 		d.VoteCredits,
 		d.Votes,
