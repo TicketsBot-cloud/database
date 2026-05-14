@@ -43,7 +43,6 @@ type Panel struct {
 	HideClaimButton                bool    `json:"hide_claim_button"`
 	ShowInOpenCommand              bool    `json:"show_in_open_command"`
 	StoreTranscripts               bool    `json:"store_transcripts"`
-	ThreadArchiveDuration          int     `json:"thread_archive_duration"`
 	OverflowEnabled                bool    `json:"overflow_enabled"`
 	OverflowCategoryId             *uint64 `json:"overflow_category_id,string"`
 	UsersCanClose                  bool    `json:"users_can_close"`
@@ -106,7 +105,6 @@ CREATE TABLE IF NOT EXISTS panels(
 	"hide_claim_button" bool NOT NULL DEFAULT false,
 	"show_in_open_command" bool NOT NULL DEFAULT false,
 	"store_transcripts" bool NOT NULL DEFAULT true,
-	"thread_archive_duration" int NOT NULL DEFAULT 10080,
 	"overflow_enabled" bool NOT NULL DEFAULT false,
 	"overflow_category_id" int8 DEFAULT NULL,
 	"users_can_close" bool NOT NULL DEFAULT true,
@@ -163,7 +161,6 @@ SELECT
 	hide_claim_button,
 	show_in_open_command,
 	store_transcripts,
-	thread_archive_duration,
 	overflow_enabled,
 	overflow_category_id,
 	users_can_close,
@@ -220,7 +217,6 @@ SELECT
 	hide_claim_button,
 	show_in_open_command,
 	store_transcripts,
-	thread_archive_duration,
 	overflow_enabled,
 	overflow_category_id,
 	users_can_close,
@@ -277,7 +273,6 @@ SELECT
 	panels.hide_claim_button,
 	panels.show_in_open_command,
 	panels.store_transcripts,
-	panels.thread_archive_duration,
 	panels.overflow_enabled,
 	panels.overflow_category_id,
 	panels.users_can_close,
@@ -396,7 +391,6 @@ SELECT
 	hide_claim_button,
 	show_in_open_command,
 	store_transcripts,
-	thread_archive_duration,
 	overflow_enabled,
 	overflow_category_id,
 	users_can_close,
@@ -456,7 +450,6 @@ SELECT
 	hide_claim_button,
 	show_in_open_command,
 	store_transcripts,
-	thread_archive_duration,
 	overflow_enabled,
 	overflow_category_id,
 	users_can_close,
@@ -569,7 +562,6 @@ SELECT
 	hide_claim_button,
 	show_in_open_command,
 	store_transcripts,
-	thread_archive_duration,
 	overflow_enabled,
 	overflow_category_id,
 	users_can_close,
@@ -636,7 +628,6 @@ SELECT
 	panels.hide_claim_button,
 	panels.show_in_open_command,
 	panels.store_transcripts,
-	panels.thread_archive_duration,
 	panels.overflow_enabled,
 	panels.overflow_category_id,
 	panels.users_can_close,
@@ -772,7 +763,6 @@ INSERT INTO panels(
 	"hide_claim_button",
 	"show_in_open_command",
 	"store_transcripts",
-	"thread_archive_duration",
 	"overflow_enabled",
 	"overflow_category_id",
 	"users_can_close",
@@ -781,7 +771,7 @@ INSERT INTO panels(
 	"support_can_view",
 	"support_can_type"
 )
-VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41)
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40)
 ON CONFLICT("message_id") DO NOTHING
 RETURNING "panel_id";`
 
@@ -819,7 +809,6 @@ RETURNING "panel_id";`
 		panel.HideClaimButton,
 		panel.ShowInOpenCommand,
 		panel.StoreTranscripts,
-		panel.ThreadArchiveDuration,
 		panel.OverflowEnabled,
 		panel.OverflowCategoryId,
 		panel.UsersCanClose,
@@ -882,14 +871,13 @@ UPDATE panels
 		"hide_claim_button" = $31,
 		"show_in_open_command" = $32,
 		"store_transcripts" = $33,
-		"thread_archive_duration" = $34,
-		"overflow_enabled" = $35,
-		"overflow_category_id" = $36,
-		"users_can_close" = $37,
-		"close_confirmation" = $38,
-		"feedback_enabled" = $39,
-		"support_can_view" = $40,
-		"support_can_type" = $41
+		"overflow_enabled" = $34,
+		"overflow_category_id" = $35,
+		"users_can_close" = $36,
+		"close_confirmation" = $37,
+		"feedback_enabled" = $38,
+		"support_can_view" = $39,
+		"support_can_type" = $40
 	WHERE
 		"panel_id" = $1
 ;`
@@ -928,7 +916,6 @@ UPDATE panels
 		panel.HideClaimButton,
 		panel.ShowInOpenCommand,
 		panel.StoreTranscripts,
-		panel.ThreadArchiveDuration,
 		panel.OverflowEnabled,
 		panel.OverflowCategoryId,
 		panel.UsersCanClose,
@@ -1067,7 +1054,6 @@ func (p *Panel) fieldPtrs() []interface{} {
 		&p.HideClaimButton,
 		&p.ShowInOpenCommand,
 		&p.StoreTranscripts,
-		&p.ThreadArchiveDuration,
 		&p.OverflowEnabled,
 		&p.OverflowCategoryId,
 		&p.UsersCanClose,

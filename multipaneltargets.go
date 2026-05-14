@@ -80,7 +80,6 @@ SELECT
 	panels.hide_claim_button,
 	panels.show_in_open_command,
 	panels.store_transcripts,
-	panels.thread_archive_duration,
 	panels.overflow_enabled,
 	panels.overflow_category_id,
 	panels.users_can_close,
