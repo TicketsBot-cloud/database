@@ -69,7 +69,7 @@ SELECT
 	panels.disabled,
 	panels.exit_survey_form_id,
 	panels.pending_category,
-	panels.delete_mentions,
+	panels.mention_behaviour,
 	panels.transcript_channel_id,
 	panels.use_threads,
 	panels.ticket_notification_channel,

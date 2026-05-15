@@ -32,7 +32,7 @@ type Panel struct {
 	Disabled                       bool    `json:"disabled"`
 	ExitSurveyFormId               *int    `json:"exit_survey_form_id"`
 	PendingCategory                *uint64 `json:"pending_category,string"`
-	DeleteMentions                 bool    `json:"delete_mentions"`
+	MentionBehaviour               string  `json:"mention_behaviour"`
 	TranscriptChannelId            *uint64 `json:"transcript_channel_id,string,omitempty"`
 	UseThreads                     bool    `json:"use_threads"`
 	TicketNotificationChannel      *uint64 `json:"ticket_notification_channel,string,omitempty"`
@@ -94,7 +94,7 @@ CREATE TABLE IF NOT EXISTS panels(
 	"disabled" bool NOT NULL DEFAULT false,
 	"exit_survey_form_id" int DEFAULT NULL,
 	"pending_category" int8 DEFAULT NULL,
-	"delete_mentions" bool NOT NULL DEFAULT false,
+	"mention_behaviour" varchar(20) NOT NULL DEFAULT 'none',
 	"transcript_channel_id" int8 DEFAULT NULL,
 	"use_threads" bool NOT NULL DEFAULT false,
 	"ticket_notification_channel" int8 DEFAULT NULL,
@@ -150,7 +150,7 @@ SELECT
 	disabled,
 	exit_survey_form_id,
 	pending_category,
-	delete_mentions,
+	mention_behaviour,
 	transcript_channel_id,
 	use_threads,
 	ticket_notification_channel,
@@ -206,7 +206,7 @@ SELECT
 	disabled,
 	exit_survey_form_id,
 	pending_category,
-	delete_mentions,
+	mention_behaviour,
 	transcript_channel_id,
 	use_threads,
 	ticket_notification_channel,
@@ -262,7 +262,7 @@ SELECT
 	panels.disabled,
 	panels.exit_survey_form_id,
 	panels.pending_category,
-	panels.delete_mentions,
+	panels.mention_behaviour,
 	panels.transcript_channel_id,
 	panels.use_threads,
 	panels.ticket_notification_channel,
@@ -380,7 +380,7 @@ SELECT
 	disabled,
 	exit_survey_form_id,
 	pending_category,
-	delete_mentions,
+	mention_behaviour,
 	transcript_channel_id,
 	use_threads,
 	ticket_notification_channel,
@@ -439,7 +439,7 @@ SELECT
 	disabled,
 	exit_survey_form_id,
 	pending_category,
-	delete_mentions,
+	mention_behaviour,
 	transcript_channel_id,
 	use_threads,
 	ticket_notification_channel,
@@ -498,7 +498,7 @@ SELECT
 	panels.disabled,
 	panels.exit_survey_form_id,
 	panels.pending_category,
-	panels.delete_mentions,
+	panels.mention_behaviour,
 	panels.transcript_channel_id,
 	panels.use_threads,
 	panels.ticket_notification_channel,
@@ -507,11 +507,19 @@ SELECT
 	panels.hide_close_button,
 	panels.hide_close_with_reason_button,
 	panels.hide_claim_button,
-	panels.show_in_open_command
+	panels.show_in_open_command,
+	panels.store_transcripts,
+	panels.overflow_enabled,
+	panels.overflow_category_id,
+	panels.users_can_close,
+	panels.close_confirmation,
+	panels.feedback_enabled,
+	panels.support_can_view,
+	panels.support_can_type
 FROM panels
 INNER JOIN forms
 ON forms.form_id = panels.form_id
-WHERE forms.guild_id = $1 AND forms.form_id = $2;
+WHERE forms.guild_id = $1 AND forms.custom_id = $2;
 `
 
 	switch err := p.QueryRow(ctx, query, guildId, customId).Scan(panel.fieldPtrs()...); err {
@@ -551,7 +559,7 @@ SELECT
 	disabled,
 	exit_survey_form_id,
 	pending_category,
-	delete_mentions,
+	mention_behaviour,
 	transcript_channel_id,
 	use_threads,
 	ticket_notification_channel,
@@ -617,7 +625,7 @@ SELECT
 	panels.disabled,
 	panels.exit_survey_form_id,
 	panels.pending_category,
-	panels.delete_mentions,
+	panels.mention_behaviour,
 	panels.transcript_channel_id,
 	panels.use_threads,
 	panels.ticket_notification_channel,
@@ -752,7 +760,7 @@ INSERT INTO panels(
 	"disabled",
     "exit_survey_form_id",
 	"pending_category",
-	"delete_mentions",
+	"mention_behaviour",
 	"transcript_channel_id",
 	"use_threads",
 	"ticket_notification_channel",
@@ -798,7 +806,7 @@ RETURNING "panel_id";`
 		panel.Disabled,
 		panel.ExitSurveyFormId,
 		panel.PendingCategory,
-		panel.DeleteMentions,
+		panel.MentionBehaviour,
 		panel.TranscriptChannelId,
 		panel.UseThreads,
 		panel.TicketNotificationChannel,
@@ -860,7 +868,7 @@ UPDATE panels
 	    "disabled" = $20,
 	    "exit_survey_form_id" = $21,
 	    "pending_category" = $22,
-		"delete_mentions" = $23,
+		"mention_behaviour" = $23,
 		"transcript_channel_id" = $24,
 		"use_threads" = $25,
 		"ticket_notification_channel" = $26,
@@ -905,7 +913,7 @@ UPDATE panels
 		panel.Disabled,
 		panel.ExitSurveyFormId,
 		panel.PendingCategory,
-		panel.DeleteMentions,
+		panel.MentionBehaviour,
 		panel.TranscriptChannelId,
 		panel.UseThreads,
 		panel.TicketNotificationChannel,
@@ -1043,7 +1051,7 @@ func (p *Panel) fieldPtrs() []interface{} {
 		&p.Disabled,
 		&p.ExitSurveyFormId,
 		&p.PendingCategory,
-		&p.DeleteMentions,
+		&p.MentionBehaviour,
 		&p.TranscriptChannelId,
 		&p.UseThreads,
 		&p.TicketNotificationChannel,
