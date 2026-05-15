@@ -13,7 +13,6 @@ const defaultTransactionTimeout = time.Second * 3
 type Database struct {
 	pool                           *pgxpool.Pool
 	ActiveLanguage                 *ActiveLanguage
-	ArchiveChannel                 *ArchiveChannel
 	AuditLog                       *AuditLogTable
 	ArchiveMessages                *ArchiveMessages
 	AutoCloseExclude               *AutoCloseExclude
@@ -62,7 +61,6 @@ type Database struct {
 	MultiPanels                    *MultiPanelTable
 	MultiPanelTargets              *MultiPanelTargets
 	MultiServerSkus                *MultiServerSkus
-	NamingScheme                   *TicketNamingScheme
 	OnCall                         *OnCall
 	Panel                          *PanelTable
 	PanelAccessControlRules        *PanelAccessControlRules
@@ -97,16 +95,13 @@ type Database struct {
 	Tag                            *TagsTable
 	TicketClaims                   *TicketClaims
 	TicketLastMessage              *TicketLastMessageTable
-	TicketLimit                    *TicketLimit
 	TicketMembers                  *TicketMembers
-	TicketPermissions              *TicketPermissionsTable
 	Tickets                        *TicketTable
 	UsedKeys                       *UsedKeys
 	UserGuilds                     *UserGuildsTable
 	VoteCredits                    *VoteCredits
 	Votes                          *Votes
 	Webhooks                       *WebhookTable
-	WelcomeMessages                *WelcomeMessages
 	TicketLabels               *TicketLabelsTable
 	TicketLabelAssignments     *TicketLabelAssignmentsTable
 	Whitelabel                     *WhitelabelBotTable
@@ -120,7 +115,6 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 	db := &Database{
 		pool:                           pool,
 		ActiveLanguage:                 newActiveLanguage(pool),
-		ArchiveChannel:                 newArchiveChannel(pool),
 		AuditLog:                       newAuditLogTable(pool),
 		ArchiveMessages:                newArchiveMessages(pool),
 		AutoCloseExclude:               newAutoCloseExclude(pool),
@@ -169,7 +163,6 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		MultiPanels:                    newMultiMultiPanelTable(pool),
 		MultiPanelTargets:              newMultiPanelTargets(pool),
 		MultiServerSkus:                newMultiServerSkusTable(pool),
-		NamingScheme:                   newTicketNamingScheme(pool),
 		OnCall:                         newOnCall(pool),
 		Panel:                          newPanelTable(pool),
 		PanelAccessControlRules:        newPanelAccessControlRules(pool),
@@ -204,16 +197,13 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		Tag:                            newTag(pool),
 		TicketClaims:                   newTicketClaims(pool),
 		TicketLastMessage:              newTicketLastMessageTable(pool),
-		TicketLimit:                    newTicketLimit(pool),
 		TicketMembers:                  newTicketMembers(pool),
-		TicketPermissions:              newTicketPermissionsTable(pool),
 		Tickets:                        newTicketTable(pool),
 		UsedKeys:                       newUsedKeys(pool),
 		UserGuilds:                     newUserGuildsTable(pool),
 		VoteCredits:                    newVoteCreditsTable(pool),
 		Votes:                          newVotes(pool),
 		Webhooks:                       newWebhookTable(pool),
-		WelcomeMessages:                newWelcomeMessages(pool),
 		TicketLabels:               newTicketLabelsTable(pool),
 		TicketLabelAssignments:     newTicketLabelAssignmentsTable(pool),
 		Whitelabel:                     newWhitelabelBotTable(pool),
@@ -253,7 +243,6 @@ func (d *Database) WithTx(ctx context.Context, f func(tx pgx.Tx) error) error {
 func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 	mustCreate(ctx, pool,
 		d.ActiveLanguage,
-		d.ArchiveChannel,
 		d.Blacklist,
 		d.BotStaff,
 		d.ChannelCategory,
@@ -289,7 +278,6 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.LegacyPremiumEntitlementGuilds,
 		d.MultiPanels,
 		d.MultiServerSkus,
-		d.NamingScheme,
 		d.OnCall,
 		d.Panel,
 		d.PanelTicketPermissions, // must be created after panels table
@@ -322,8 +310,6 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.KBArticles,          // Knowledge base articles (references categories)
 		d.KBSettings,          // Knowledge base customisation settings
 		d.PanelKBCategories,   // Panel-to-KB-category associations
-		d.TicketLimit,
-		d.TicketPermissions,
 		d.Tickets,             // Must be created before members table
 		d.TicketLastMessage,   // Must be created after Tickets table
 		d.Participants,        // Must be created after Tickets table
@@ -347,7 +333,6 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.VoteCredits,
 		d.Votes,
 		d.Webhooks,
-		d.WelcomeMessages,
 		d.Whitelabel,
 		d.WhitelabelErrors,
 		d.WhitelabelGuilds,
