@@ -127,6 +127,23 @@ const (
 
 	AuditActionOnboardingComplete AuditActionType = 410
 	AuditActionOnboardingSkip     AuditActionType = 411
+
+	AuditActionAffiliateApply      AuditActionType = 420
+	AuditActionAffiliateApprove    AuditActionType = 421
+	AuditActionAffiliateRevoke     AuditActionType = 422
+	AuditActionAffiliateCreate     AuditActionType = 423
+	AuditActionAffiliateRedeem     AuditActionType = 424
+	AuditActionAffiliateVoid       AuditActionType = 425
+	AuditActionAffiliateUpdateRate AuditActionType = 426
+
+	AuditActionNotificationPreferencesUpdate AuditActionType = 430
+	AuditActionUserEmailUpdate               AuditActionType = 431
+	AuditActionUserEmailDelete               AuditActionType = 432
+	AuditActionNotificationMarkRead          AuditActionType = 433
+	AuditActionNotificationMarkAllRead       AuditActionType = 434
+
+	AuditActionEmailVerify             AuditActionType = 435
+	AuditActionEmailResendVerification AuditActionType = 436
 )
 
 type AuditResourceType int16
@@ -163,6 +180,12 @@ const (
 	AuditResourceKBSettings            AuditResourceType = 29
 	AuditResourceGalleryListing        AuditResourceType = 30
 	AuditResourceOnboarding            AuditResourceType = 31
+	AuditResourceAffiliate             AuditResourceType = 32
+	AuditResourceAffiliateReferral     AuditResourceType = 33
+	AuditResourceNotificationPrefs     AuditResourceType = 34
+	AuditResourceUserEmail             AuditResourceType = 35
+	AuditResourceNotification          AuditResourceType = 36
+	AuditResourceUserEmailVerification AuditResourceType = 37
 )
 
 type AuditLogEntry struct {

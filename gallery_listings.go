@@ -39,16 +39,16 @@ type GalleryListing struct {
 	ImportCount     int                  `json:"import_count"`
 	Featured        bool                 `json:"featured"`
 	SnapshotData    []byte               `json:"snapshot_data"`
-	// Panel visual design fields — only populated for panel listings
-	Title          string  `json:"title"`
-	Content        string  `json:"content"`
-	Colour         int32   `json:"colour"`
-	ImageUrl       *string `json:"image_url"`
-	ThumbnailUrl   *string `json:"thumbnail_url"`
-	ButtonStyle    *int16  `json:"button_style"`
-	ButtonLabel    string  `json:"button_label"`
-	EmojiName      *string `json:"emoji_name"`
-	WelcomeMessage []byte  `json:"welcome_message"`
+	// Panel visual design fields - only populated for panel listings
+	Title          string    `json:"title"`
+	Content        string    `json:"content"`
+	Colour         int32     `json:"colour"`
+	ImageUrl       *string   `json:"image_url"`
+	ThumbnailUrl   *string   `json:"thumbnail_url"`
+	ButtonStyle    *int16    `json:"button_style"`
+	ButtonLabel    string    `json:"button_label"`
+	EmojiName      *string   `json:"emoji_name"`
+	WelcomeMessage []byte    `json:"welcome_message"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }

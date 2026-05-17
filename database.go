@@ -12,6 +12,8 @@ const defaultTransactionTimeout = time.Second * 3
 
 type Database struct {
 	pool                           *pgxpool.Pool
+	AffiliateCodes                 *AffiliateCodes
+	AffiliateReferrals             *AffiliateReferrals
 	ActiveLanguage                 *ActiveLanguage
 	AuditLog                       *AuditLogTable
 	ArchiveMessages                *ArchiveMessages
@@ -36,6 +38,7 @@ type Database struct {
 	ArchiveDmMessages              *ArchiveDmMessages
 	DiscordEntitlements            *DiscordEntitlements
 	DiscordStoreSkus               *DiscordStoreSkus
+	EmailVerificationCodes         *EmailVerificationCodes
 	EmbedFields                    *EmbedFieldsTable
 	Embeds                         *EmbedsTable
 	Entitlements                   *Entitlements
@@ -61,6 +64,8 @@ type Database struct {
 	MultiPanels                    *MultiPanelTable
 	MultiPanelTargets              *MultiPanelTargets
 	MultiServerSkus                *MultiServerSkus
+	Notifications                  *NotificationsTable
+	NotificationPreferences        *NotificationPreferencesTable
 	OnCall                         *OnCall
 	Panel                          *PanelTable
 	PanelAccessControlRules        *PanelAccessControlRules
@@ -98,6 +103,7 @@ type Database struct {
 	TicketMembers                  *TicketMembers
 	Tickets                        *TicketTable
 	UsedKeys                       *UsedKeys
+	UserEmails                     *UserEmails
 	UserGuilds                     *UserGuildsTable
 	VoteCredits                    *VoteCredits
 	Votes                          *Votes
@@ -114,6 +120,8 @@ type Database struct {
 func NewDatabase(pool *pgxpool.Pool) *Database {
 	db := &Database{
 		pool:                           pool,
+		AffiliateCodes:                 newAffiliateCodes(pool),
+		AffiliateReferrals:             newAffiliateReferrals(pool),
 		ActiveLanguage:                 newActiveLanguage(pool),
 		AuditLog:                       newAuditLogTable(pool),
 		ArchiveMessages:                newArchiveMessages(pool),
@@ -138,6 +146,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		ArchiveDmMessages:              newArchiveDmMessages(pool),
 		DiscordEntitlements:            newDiscordEntitlementsTable(pool),
 		DiscordStoreSkus:               newDiscordStoreSkusTable(pool),
+		EmailVerificationCodes:         newEmailVerificationCodes(pool),
 		EmbedFields:                    newEmbedFieldsTable(pool),
 		Embeds:                         newEmbedsTable(pool),
 		Entitlements:                   newEntitlementsTable(pool),
@@ -163,6 +172,8 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		MultiPanels:                    newMultiMultiPanelTable(pool),
 		MultiPanelTargets:              newMultiPanelTargets(pool),
 		MultiServerSkus:                newMultiServerSkusTable(pool),
+		Notifications:                  newNotificationsTable(pool),
+		NotificationPreferences:        newNotificationPreferencesTable(pool),
 		OnCall:                         newOnCall(pool),
 		Panel:                          newPanelTable(pool),
 		PanelAccessControlRules:        newPanelAccessControlRules(pool),
@@ -200,6 +211,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		TicketMembers:                  newTicketMembers(pool),
 		Tickets:                        newTicketTable(pool),
 		UsedKeys:                       newUsedKeys(pool),
+		UserEmails:                     newUserEmails(pool),
 		UserGuilds:                     newUserGuildsTable(pool),
 		VoteCredits:                    newVoteCreditsTable(pool),
 		Votes:                          newVotes(pool),
@@ -292,6 +304,8 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.PatreonEntitlements,
 		d.PolarEntitlements, // depends on entitlements
 		d.PolarProducts,    // depends on skus
+		d.AffiliateCodes,      // adds 'affiliate' to premium_source enum; must be after entitlements
+		d.AffiliateReferrals,  // depends on affiliate_codes
 		d.Permissions,
 		d.PremiumGuilds,
 		d.PremiumKeys,
@@ -329,6 +343,10 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.TicketMembers,
 		d.TicketClaims,
 		d.UsedKeys,
+		d.UserEmails,
+		d.EmailVerificationCodes,
+		d.Notifications,
+		d.NotificationPreferences,
 		d.UserGuilds,
 		d.VoteCredits,
 		d.Votes,
