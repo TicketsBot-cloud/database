@@ -110,6 +110,8 @@ type Database struct {
 	Webhooks                       *WebhookTable
 	TicketLabels               *TicketLabelsTable
 	TicketLabelAssignments     *TicketLabelAssignmentsTable
+	TicketMessageCounts        *TicketMessageCounts
+	AdminAnalytics             *AdminAnalyticsTable
 	Whitelabel                     *WhitelabelBotTable
 	WhitelabelErrors               *WhitelabelErrors
 	WhitelabelGuilds               *WhitelabelGuilds
@@ -218,6 +220,8 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		Webhooks:                       newWebhookTable(pool),
 		TicketLabels:               newTicketLabelsTable(pool),
 		TicketLabelAssignments:     newTicketLabelAssignmentsTable(pool),
+		TicketMessageCounts:        newTicketMessageCounts(pool),
+		AdminAnalytics:             newAdminAnalyticsTable(pool),
 		Whitelabel:                     newWhitelabelBotTable(pool),
 		WhitelabelErrors:               newWhitelabelErrors(pool),
 		WhitelabelGuilds:               newWhitelabelGuilds(pool),
@@ -337,6 +341,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.CategoryUpdateQueue, // Must be created after Tickets table
 		d.TicketLabels,            // Must be created after Tickets table
 		d.TicketLabelAssignments,  // Must be created after Tickets and TicketLabels tables
+		d.TicketMessageCounts,     // Must be created after Tickets table
 		d.GalleryListings,         // Gallery panel listings
 		d.GalleryListingTags,      // Must be created after GalleryListings table
 		d.FirstResponseTime,

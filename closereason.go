@@ -151,6 +151,44 @@ LIMIT $3;`
 	return reasons, nil
 }
 
+type CloseReasonCount struct {
+	Reason string `json:"reason"`
+	Count  int    `json:"count"`
+}
+
+func (c *CloseMetadataTable) GetTopCloseReasonsWithCount(ctx context.Context, guildId uint64, panelId *int, limit, days int) ([]CloseReasonCount, error) {
+	query := `
+SELECT cr.close_reason, COUNT(*)::int AS count
+FROM close_reason cr
+INNER JOIN tickets t ON cr.guild_id = t.guild_id AND cr.ticket_id = t.id
+WHERE cr.guild_id = $1
+  AND ($2::int IS NULL OR t.panel_id = $2)
+  AND cr.close_reason IS NOT NULL
+  AND cr.close_reason != ''
+  AND cr.close_reason != 'Automatically closed due to inactivity'
+  AND ($4 = 0 OR t.open_time > NOW() - make_interval(days => $4))
+GROUP BY cr.close_reason
+ORDER BY COUNT(*) DESC
+LIMIT $3;`
+
+	rows, err := c.Query(ctx, query, guildId, panelId, limit, days)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []CloseReasonCount
+	for rows.Next() {
+		var r CloseReasonCount
+		if err := rows.Scan(&r.Reason, &r.Count); err != nil {
+			return nil, err
+		}
+		results = append(results, r)
+	}
+
+	return results, nil
+}
+
 func (c *CloseMetadataTable) GetAutoCloseVsManualClose(ctx context.Context, guildId uint64, nDays int) (AutoCloseStats, error) {
 	query := `
 SELECT

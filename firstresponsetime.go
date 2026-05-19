@@ -122,6 +122,69 @@ WHERE frt.guild_id = $1;`
 	}, nil
 }
 
+func (f *FirstResponseTime) GetAverageByHour(ctx context.Context, guildId uint64, days int) ([]ResponseTimeByHour, error) {
+	if days == 0 {
+		query := `
+SELECT
+    EXTRACT(HOUR FROM t.open_time)::int AS hour_of_day,
+    AVG(frt.response_time) AS avg_response_time
+FROM first_response_time frt
+INNER JOIN tickets t ON frt.guild_id = t.guild_id AND frt.ticket_id = t.id
+WHERE frt.guild_id = $1
+GROUP BY hour_of_day
+ORDER BY hour_of_day;`
+
+		rows, err := f.Query(ctx, query, guildId)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		var results []ResponseTimeByHour
+		for rows.Next() {
+			var r ResponseTimeByHour
+			if err := rows.Scan(&r.HourOfDay, &r.AvgResponseTime); err != nil {
+				return nil, err
+			}
+			results = append(results, r)
+		}
+
+		return results, nil
+	}
+
+	parsedInterval := pgtype.Interval{}
+	if err := parsedInterval.Set(time.Duration(days) * 24 * time.Hour); err != nil {
+		return nil, err
+	}
+
+	query := `
+SELECT
+    EXTRACT(HOUR FROM t.open_time)::int AS hour_of_day,
+    AVG(frt.response_time) AS avg_response_time
+FROM first_response_time frt
+INNER JOIN tickets t ON frt.guild_id = t.guild_id AND frt.ticket_id = t.id
+WHERE frt.guild_id = $1 AND t.open_time > NOW() - $2::interval
+GROUP BY hour_of_day
+ORDER BY hour_of_day;`
+
+	rows, err := f.Query(ctx, query, guildId, parsedInterval)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []ResponseTimeByHour
+	for rows.Next() {
+		var r ResponseTimeByHour
+		if err := rows.Scan(&r.HourOfDay, &r.AvgResponseTime); err != nil {
+			return nil, err
+		}
+		results = append(results, r)
+	}
+
+	return results, nil
+}
+
 func (f *FirstResponseTime) Set(ctx context.Context, guildId, userId uint64, ticketId int, responseTime time.Duration) (err error) {
 	query := `INSERT INTO first_response_time("guild_id", "ticket_id", "user_id", "response_time") VALUES($1, $2, $3, $4) ON CONFLICT("guild_id", "ticket_id") DO NOTHING;`
 	_, err = f.Exec(ctx, query, guildId, ticketId, userId, responseTime)

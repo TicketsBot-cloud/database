@@ -41,3 +41,19 @@ type AutoCloseStats struct {
 	AutoClosed   int `json:"auto_closed"`
 	ManualClosed int `json:"manual_closed"`
 }
+
+type PeakHourEntry struct {
+	DayOfWeek int `json:"day_of_week"`
+	HourOfDay int `json:"hour_of_day"`
+	Count     int `json:"count"`
+}
+
+type SourceBreakdown struct {
+	Source TicketSource `json:"source"`
+	Count int          `json:"count"`
+}
+
+type ResponseTimeByHour struct {
+	HourOfDay       int            `json:"hour_of_day"`
+	AvgResponseTime *time.Duration `json:"avg_response_time"`
+}
