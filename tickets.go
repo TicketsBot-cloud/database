@@ -1490,8 +1490,8 @@ func (t *TicketTable) GetPeakHours(ctx context.Context, guildId uint64, days int
 	if days == 0 {
 		query := `
 SELECT
-    EXTRACT(DOW FROM open_time)::int AS day_of_week,
-    EXTRACT(HOUR FROM open_time)::int AS hour_of_day,
+    EXTRACT(DOW FROM open_time AT TIME ZONE 'UTC')::int AS day_of_week,
+    EXTRACT(HOUR FROM open_time AT TIME ZONE 'UTC')::int AS hour_of_day,
     COUNT(*)::int AS count
 FROM tickets
 WHERE guild_id = $1
@@ -1523,8 +1523,8 @@ ORDER BY day_of_week, hour_of_day;`
 
 	query := `
 SELECT
-    EXTRACT(DOW FROM open_time)::int AS day_of_week,
-    EXTRACT(HOUR FROM open_time)::int AS hour_of_day,
+    EXTRACT(DOW FROM open_time AT TIME ZONE 'UTC')::int AS day_of_week,
+    EXTRACT(HOUR FROM open_time AT TIME ZONE 'UTC')::int AS hour_of_day,
     COUNT(*)::int AS count
 FROM tickets
 WHERE guild_id = $1 AND open_time > NOW() - $2::interval

@@ -135,6 +135,7 @@ const (
 	AuditActionAffiliateRedeem     AuditActionType = 424
 	AuditActionAffiliateVoid       AuditActionType = 425
 	AuditActionAffiliateUpdateRate AuditActionType = 426
+	AuditActionAffiliateUpdateCode AuditActionType = 427
 
 	AuditActionNotificationPreferencesUpdate AuditActionType = 430
 	AuditActionUserEmailUpdate               AuditActionType = 431

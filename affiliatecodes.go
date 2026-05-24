@@ -62,6 +62,9 @@ var (
 
 	//go:embed sql/affiliate_codes/update_rates.sql
 	affiliateCodesUpdateRates string
+
+	//go:embed sql/affiliate_codes/update_code.sql
+	affiliateCodesUpdateCode string
 )
 
 func newAffiliateCodes(db *pgxpool.Pool) *AffiliateCodes {
@@ -163,5 +166,10 @@ func (t *AffiliateCodes) SetPolarDiscountId(ctx context.Context, id uuid.UUID, p
 
 func (t *AffiliateCodes) UpdateRates(ctx context.Context, id uuid.UUID, discountBasisPoints int, creditPercentage *int) error {
 	_, err := t.Exec(ctx, affiliateCodesUpdateRates, id, discountBasisPoints, creditPercentage)
+	return err
+}
+
+func (t *AffiliateCodes) UpdateCode(ctx context.Context, id uuid.UUID, code string) error {
+	_, err := t.Exec(ctx, affiliateCodesUpdateCode, id, code)
 	return err
 }
