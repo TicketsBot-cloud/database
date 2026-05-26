@@ -56,6 +56,7 @@ SELECT
 	panels.target_category,
 	panels.emoji_name,
 	panels.emoji_id,
+	panels.emoji_animated,
 	panels.welcome_message,
 	panels.default_team,
 	panels.custom_id,
