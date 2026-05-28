@@ -81,6 +81,13 @@ func newTicketTable(db *pgxpool.Pool) *TicketTable {
 
 func (t TicketTable) Schema() string {
 	return `
+DO $$
+BEGIN
+	CREATE TYPE ticket_status AS ENUM ('OPEN', 'PENDING', 'CLOSED');
+EXCEPTION
+	WHEN duplicate_object THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS tickets(
 	"id" int4 NOT NULL,
 	"guild_id" int8 NOT NULL,
@@ -100,7 +107,7 @@ CREATE TABLE IF NOT EXISTS tickets(
 	FOREIGN KEY("panel_id") REFERENCES panels("panel_id") ON DELETE SET NULL ON UPDATE CASCADE,
 	PRIMARY KEY("id", "guild_id")
 );
-CREATE TABLE guild_ticket_counters (
+CREATE TABLE IF NOT EXISTS guild_ticket_counters (
     guild_id bigint PRIMARY KEY,
     last_ticket_id integer NOT NULL DEFAULT 0
 );

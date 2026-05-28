@@ -108,10 +108,10 @@ type Database struct {
 	VoteCredits                    *VoteCredits
 	Votes                          *Votes
 	Webhooks                       *WebhookTable
-	TicketLabels               *TicketLabelsTable
-	TicketLabelAssignments     *TicketLabelAssignmentsTable
-	TicketMessageCounts        *TicketMessageCounts
-	AdminAnalytics             *AdminAnalyticsTable
+	TicketLabels                   *TicketLabelsTable
+	TicketLabelAssignments         *TicketLabelAssignmentsTable
+	TicketMessageCounts            *TicketMessageCounts
+	AdminAnalytics                 *AdminAnalyticsTable
 	Whitelabel                     *WhitelabelBotTable
 	WhitelabelErrors               *WhitelabelErrors
 	WhitelabelGuilds               *WhitelabelGuilds
@@ -218,10 +218,10 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		VoteCredits:                    newVoteCreditsTable(pool),
 		Votes:                          newVotes(pool),
 		Webhooks:                       newWebhookTable(pool),
-		TicketLabels:               newTicketLabelsTable(pool),
-		TicketLabelAssignments:     newTicketLabelAssignmentsTable(pool),
-		TicketMessageCounts:        newTicketMessageCounts(pool),
-		AdminAnalytics:             newAdminAnalyticsTable(pool),
+		TicketLabels:                   newTicketLabelsTable(pool),
+		TicketLabelAssignments:         newTicketLabelAssignmentsTable(pool),
+		TicketMessageCounts:            newTicketMessageCounts(pool),
+		AdminAnalytics:                 newAdminAnalyticsTable(pool),
 		Whitelabel:                     newWhitelabelBotTable(pool),
 		WhitelabelErrors:               newWhitelabelErrors(pool),
 		WhitelabelGuilds:               newWhitelabelGuilds(pool),
@@ -296,20 +296,20 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.MultiServerSkus,
 		d.OnCall,
 		d.Panel,
-		d.PanelTicketPermissions, // must be created after panels table
+		d.PanelTicketPermissions,  // must be created after panels table
 		d.PanelAccessControlRules, // must be created after panels table
 		d.MultiPanelTargets,       // must be created after panels table
 		d.PanelRoleMentions,
 		d.PanelSupportHours,         // must be created after panels table
 		d.PanelSupportHoursSettings, // must be created after panels table
-		d.PanelAutoClose,          // must be created after panels table
+		d.PanelAutoClose,            // must be created after panels table
 		d.PanelUserMention,
 		d.PanelHereMention,
 		d.PatreonEntitlements,
-		d.PolarEntitlements, // depends on entitlements
-		d.PolarProducts,    // depends on skus
-		d.AffiliateCodes,      // adds 'affiliate' to premium_source enum; must be after entitlements
-		d.AffiliateReferrals,  // depends on affiliate_codes
+		d.PolarEntitlements,  // depends on entitlements
+		d.PolarProducts,      // depends on skus
+		d.AffiliateCodes,     // adds 'affiliate' to premium_source enum; must be after entitlements
+		d.AffiliateReferrals, // depends on affiliate_codes
 		d.Permissions,
 		d.PremiumGuilds,
 		d.PremiumKeys,
@@ -324,26 +324,26 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.SupportTeamPermissions, // must be created after support_team table
 		d.PanelTeams,             // Must be created after panels & support teams tables
 		d.Tag,
-		d.KBCategories,        // Knowledge base categories
-		d.KBArticles,          // Knowledge base articles (references categories)
-		d.KBSettings,          // Knowledge base customisation settings
-		d.PanelKBCategories,   // Panel-to-KB-category associations
-		d.Tickets,             // Must be created before members table
-		d.TicketLastMessage,   // Must be created after Tickets table
-		d.Participants,        // Must be created after Tickets table
-		d.AutoCloseExclude,    // Must be created after Tickets table
-		d.CloseReason,         // Must be created after Tickets table
-		d.CloseRequest,        // Must be created after Tickets table
-		d.ServiceRatings,      // Must be created after Tickets table
-		d.ExitSurveyResponses, // Must be created after Tickets table
-		d.ArchiveMessages,     // Must be created after Tickets table
-		d.ArchiveDmMessages,   // Must be created after Tickets table
-		d.CategoryUpdateQueue, // Must be created after Tickets table
-		d.TicketLabels,            // Must be created after Tickets table
-		d.TicketLabelAssignments,  // Must be created after Tickets and TicketLabels tables
-		d.TicketMessageCounts,     // Must be created after Tickets table
-		d.GalleryListings,         // Gallery panel listings
-		d.GalleryListingTags,      // Must be created after GalleryListings table
+		d.KBCategories,           // Knowledge base categories
+		d.KBArticles,             // Knowledge base articles (references categories)
+		d.KBSettings,             // Knowledge base customisation settings
+		d.PanelKBCategories,      // Panel-to-KB-category associations
+		d.Tickets,                // Must be created before members table
+		d.TicketLastMessage,      // Must be created after Tickets table
+		d.Participants,           // Must be created after Tickets table
+		d.AutoCloseExclude,       // Must be created after Tickets table
+		d.CloseReason,            // Must be created after Tickets table
+		d.CloseRequest,           // Must be created after Tickets table
+		d.ServiceRatings,         // Must be created after Tickets table
+		d.ExitSurveyResponses,    // Must be created after Tickets table
+		d.ArchiveMessages,        // Must be created after Tickets table
+		d.ArchiveDmMessages,      // Must be created after Tickets table
+		d.CategoryUpdateQueue,    // Must be created after Tickets table
+		d.TicketLabels,           // Must be created after Tickets table
+		d.TicketLabelAssignments, // Must be created after Tickets and TicketLabels tables
+		d.TicketMessageCounts,    // Must be created after Tickets table
+		d.GalleryListings,        // Gallery panel listings
+		d.GalleryListingTags,     // Must be created after GalleryListings table
 		d.FirstResponseTime,
 		d.TicketMembers,
 		d.TicketClaims,
@@ -362,6 +362,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.WhitelabelStatuses,
 		d.WhitelabelUsers,
 		d.AuditLog,
+		d.AdminAnalytics,
 	)
 }
 

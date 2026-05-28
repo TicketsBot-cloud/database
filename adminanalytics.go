@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	stdjson "encoding/json"
 	"time"
 
 	"github.com/jackc/pgx/v4"
@@ -196,7 +197,7 @@ func (a *AdminAnalyticsTable) GetRetentionMetrics(ctx context.Context) (metrics 
 	}
 
 	if len(churnedJson) > 0 {
-		if err := json.Unmarshal(churnedJson, &metrics.RecentlyChurned); err != nil {
+		if err := stdjson.Unmarshal(churnedJson, &metrics.RecentlyChurned); err != nil {
 			return metrics, err
 		}
 	}

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"time"
 
@@ -10,6 +11,8 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
+
 	logrus.Info("Connecting to database...")
 	pool := must(pgxpool.Connect(ctx, os.Getenv("DATABASE_URI")))
 	db := database.NewDatabase(pool)
@@ -17,19 +20,19 @@ func main() {
 
 	if os.Getenv("DAEMON") == "true" {
 		for {
-			doRefresh(db)
+			doRefresh(ctx, db)
 			time.Sleep(6 * time.Hour)
 		}
 	} else {
-		doRefresh(db)
+		doRefresh(ctx, db)
 	}
 }
 
-func doRefresh(db *database.Database) {
+func doRefresh(ctx context.Context, db *database.Database) {
 	logrus.Info("Starting refresh...")
 
 	for _, view := range db.Views() {
-		if err := view.Refresh(); err != nil {
+		if err := view.Refresh(ctx); err != nil {
 			logrus.Errorf("Error refreshing view: %s", err.Error())
 		}
 	}
