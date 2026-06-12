@@ -52,6 +52,7 @@ func (q *CategoryUpdateQueue) GetReadyForUpdate(ctx context.Context, delayInterv
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	var items []CategoryUpdateQueueItem
 	for rows.Next() {

@@ -61,7 +61,6 @@ WHERE service_ratings.guild_id = $1 AND ticket_claims.user_id = $2;
 	return
 }
 
-// TODO: Materialized view?
 func (r *ServiceRatings) GetAverage(ctx context.Context, guildId uint64) (average float32, err error) {
 	// Returns NULL if no ratings
 	var f *float32
@@ -75,7 +74,6 @@ func (r *ServiceRatings) GetAverage(ctx context.Context, guildId uint64) (averag
 	return
 }
 
-// TODO: Materialized view?
 func (r *ServiceRatings) GetAverageClaimedBy(ctx context.Context, guildId, userId uint64) (average float32, err error) {
 	// Returns NULL if no tickets claimed
 	var f *float32
@@ -150,18 +148,6 @@ func (r *ServiceRatings) GetRange(ctx context.Context, guildId uint64, lowerId, 
 	return ratings, nil
 }
 
-func (r *ServiceRatings) ImportBulk(ctx context.Context, guildId uint64, ratings map[int]uint8) (err error) {
-	rows := make([][]interface{}, 0)
-
-	for ticketId, rating := range ratings {
-		rows = append(rows, []interface{}{guildId, ticketId, rating})
-	}
-
-	_, err = r.CopyFrom(ctx, pgx.Identifier{"service_ratings"}, []string{"guild_id", "ticket_id", "rating"}, pgx.CopyFromRows(rows))
-
-	return
-}
-
 func (r *ServiceRatings) Set(ctx context.Context, guildId uint64, ticketId int, rating uint8) (err error) {
 	query := `
 INSERT INTO service_ratings("guild_id", "ticket_id", "rating")
@@ -170,4 +156,75 @@ ON CONFLICT("guild_id", "ticket_id") DO UPDATE SET "rating" = $3;`
 
 	_, err = r.Exec(ctx, query, guildId, ticketId, rating)
 	return
+}
+
+func (r *ServiceRatings) GetDistributionClaimedBy(ctx context.Context, guildId, userId uint64) ([5]int, error) {
+	query := `
+SELECT sr.rating, COUNT(*)
+FROM service_ratings sr
+INNER JOIN ticket_claims tc ON sr.guild_id = tc.guild_id AND sr.ticket_id = tc.ticket_id
+WHERE sr.guild_id = $1 AND tc.user_id = $2
+GROUP BY sr.rating ORDER BY sr.rating;`
+
+	rows, err := r.Query(ctx, query, guildId, userId)
+	if err != nil {
+		return [5]int{}, err
+	}
+	defer rows.Close()
+
+	var dist [5]int
+	for rows.Next() {
+		var rating, count int
+		if err := rows.Scan(&rating, &count); err != nil {
+			return [5]int{}, err
+		}
+		if rating >= 1 && rating <= 5 {
+			dist[rating-1] = count
+		}
+	}
+
+	return dist, nil
+}
+
+func (r *ServiceRatings) GetDistribution(ctx context.Context, guildId uint64) ([5]int, error) {
+	query := `SELECT rating, COUNT(*) FROM service_ratings WHERE guild_id = $1 GROUP BY rating ORDER BY rating;`
+
+	rows, err := r.Query(ctx, query, guildId)
+	if err != nil {
+		return [5]int{}, err
+	}
+	defer rows.Close()
+
+	var dist [5]int
+	for rows.Next() {
+		var rating, count int
+		if err := rows.Scan(&rating, &count); err != nil {
+			return [5]int{}, err
+		}
+		if rating >= 1 && rating <= 5 {
+			dist[rating-1] = count
+		}
+	}
+
+	return dist, nil
+}
+
+func (r *ServiceRatings) GetResponseRate(ctx context.Context, guildId uint64, nDays int) (FeedbackResponseRate, error) {
+	query := `
+SELECT COUNT(t.id) AS closed, COUNT(sr.rating) AS rated
+FROM tickets t
+LEFT JOIN service_ratings sr ON t.guild_id = sr.guild_id AND t.id = sr.ticket_id
+WHERE t.guild_id = $1 AND t.open = false
+    AND t.close_time > CURRENT_DATE - ($2 - 1) * INTERVAL '1 day';`
+
+	var result FeedbackResponseRate
+	if err := r.QueryRow(ctx, query, guildId, nDays).Scan(&result.ClosedTickets, &result.RatedTickets); err != nil {
+		return FeedbackResponseRate{}, err
+	}
+
+	if result.ClosedTickets > 0 {
+		result.Rate = float64(result.RatedTickets) / float64(result.ClosedTickets)
+	}
+
+	return result, nil
 }

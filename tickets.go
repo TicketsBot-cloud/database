@@ -28,6 +28,7 @@ type Ticket struct {
 	JoinMessageId    *uint64            `json:"join_message_id"`
 	NotesThreadId    *uint64            `json:"notes_thread_id"`
 	Status           model.TicketStatus `json:"status"`
+	Source           TicketSource       `json:"source"`
 }
 
 type TicketQueryOptions struct {
@@ -80,6 +81,13 @@ func newTicketTable(db *pgxpool.Pool) *TicketTable {
 
 func (t TicketTable) Schema() string {
 	return `
+DO $$
+BEGIN
+	CREATE TYPE ticket_status AS ENUM ('OPEN', 'PENDING', 'CLOSED');
+EXCEPTION
+	WHEN duplicate_object THEN NULL;
+END $$;
+
 CREATE TABLE IF NOT EXISTS tickets(
 	"id" int4 NOT NULL,
 	"guild_id" int8 NOT NULL,
@@ -95,51 +103,22 @@ CREATE TABLE IF NOT EXISTS tickets(
     "join_message_id" int8 DEFAULT NULL,
     "notes_thread_id" int8 DEFAULT NULL,
     "status" ticket_status NOT NULL,
+    "source" int2 NOT NULL DEFAULT 0,
 	FOREIGN KEY("panel_id") REFERENCES panels("panel_id") ON DELETE SET NULL ON UPDATE CASCADE,
 	PRIMARY KEY("id", "guild_id")
 );
-CREATE TABLE guild_ticket_counters (
+CREATE TABLE IF NOT EXISTS guild_ticket_counters (
     guild_id bigint PRIMARY KEY,
     last_ticket_id integer NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS tickets_channel_id ON tickets("channel_id");
 CREATE INDEX IF NOT EXISTS tickets_panel_id ON tickets("panel_id");
+CREATE INDEX IF NOT EXISTS tickets_guild_id_open_time ON tickets("guild_id", "open_time");
+ALTER TABLE tickets ADD COLUMN IF NOT EXISTS "source" int2 NOT NULL DEFAULT 0;
 `
 }
 
-func (t *TicketTable) BulkImport(ctx context.Context, guildId uint64, tickets []Ticket) (err error) {
-	rows := make([][]interface{}, len(tickets))
-
-	for i, ticket := range tickets {
-		rows[i] = []interface{}{
-			ticket.Id,
-			guildId,
-			ticket.ChannelId,
-			ticket.UserId,
-			ticket.Open,
-			ticket.OpenTime,
-			ticket.WelcomeMessageId,
-			ticket.PanelId,
-			ticket.HasTranscript,
-			ticket.CloseTime,
-			ticket.IsThread,
-			ticket.JoinMessageId,
-			ticket.NotesThreadId,
-			"CLOSED",
-		}
-	}
-
-	_, err = t.CopyFrom(
-		ctx,
-		pgx.Identifier{"tickets"},
-		[]string{"id", "guild_id", "channel_id", "user_id", "open", "open_time", "welcome_message_id", "panel_id", "has_transcript", "close_time", "is_thread", "join_message_id", "notes_thread_id", "status"},
-		pgx.CopyFromRows(rows),
-	)
-
-	return
-}
-
-func (t *TicketTable) Create(ctx context.Context, guildId, userId uint64, isThread bool, panelId *int) (id int, err error) {
+func (t *TicketTable) Create(ctx context.Context, guildId, userId uint64, isThread bool, panelId *int, source TicketSource) (id int, err error) {
 	tx, err := t.Begin(ctx)
 	if err != nil {
 		return 0, err
@@ -151,20 +130,20 @@ func (t *TicketTable) Create(ctx context.Context, guildId, userId uint64, isThre
 	if err := tx.QueryRow(ctx, `
 		INSERT INTO guild_ticket_counters (guild_id, last_ticket_id)
 		VALUES ($1, 1)
-		ON CONFLICT (guild_id) DO UPDATE 
+		ON CONFLICT (guild_id) DO UPDATE
 		SET last_ticket_id = guild_ticket_counters.last_ticket_id + 1
 		RETURNING last_ticket_id`, guildId).Scan(&ticketId); err != nil {
 		return 0, err
 	}
 
 	query := `
-INSERT INTO tickets("id", "guild_id", "user_id", "open", "open_time", "is_thread", "panel_id", "status")
+INSERT INTO tickets("id", "guild_id", "user_id", "open", "open_time", "is_thread", "panel_id", "status", "source")
 VALUES(
-       $1, $2, $3, true, NOW(), $4, $5, $6
+       $1, $2, $3, true, NOW(), $4, $5, $6, $7
 )
 RETURNING "id";`
 
-	if err := tx.QueryRow(ctx, query, ticketId, guildId, userId, isThread, panelId, model.TicketStatusOpen).Scan(&id); err != nil {
+	if err := tx.QueryRow(ctx, query, ticketId, guildId, userId, isThread, panelId, model.TicketStatusOpen, source).Scan(&id); err != nil {
 		return 0, err
 	}
 
@@ -1388,4 +1367,290 @@ SET last_ticket_id = EXCLUDED.last_ticket_id;`
 
 	_, err = t.Exec(ctx, query, guildId)
 	return
+}
+
+func (t *TicketTable) GetTicketsPerDay(ctx context.Context, guildId uint64, nDays int) ([]CountOnDate, error) {
+	query := `
+SELECT d::date AS date, COUNT(t.id) AS count
+FROM generate_series(CURRENT_DATE - ($2 - 1) * INTERVAL '1 day', CURRENT_DATE, '1 day') AS d
+LEFT JOIN tickets t ON t.guild_id = $1 AND date_trunc('day', t.open_time AT TIME ZONE 'UTC') = d::date
+GROUP BY d::date
+ORDER BY d::date DESC;`
+
+	rows, err := t.Query(ctx, query, guildId, nDays)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	counts := make([]CountOnDate, 0, nDays)
+	for rows.Next() {
+		var c CountOnDate
+		if err := rows.Scan(&c.Date, &c.Count); err != nil {
+			return nil, err
+		}
+		counts = append(counts, c)
+	}
+
+	return counts, nil
+}
+
+func (t *TicketTable) GetTicketsPerWeek(ctx context.Context, guildId uint64, nDays int) ([]CountOnDate, error) {
+	query := `
+SELECT date_trunc('week', open_time AT TIME ZONE 'UTC')::date AS date, COUNT(*)::bigint AS count
+FROM tickets
+WHERE guild_id = $1 AND ($2 = 0 OR open_time > CURRENT_DATE - $2 * INTERVAL '1 day')
+GROUP BY 1
+ORDER BY 1;`
+
+	rows, err := t.Query(ctx, query, guildId, nDays)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var counts []CountOnDate
+	for rows.Next() {
+		var c CountOnDate
+		if err := rows.Scan(&c.Date, &c.Count); err != nil {
+			return nil, err
+		}
+		counts = append(counts, c)
+	}
+
+	return counts, nil
+}
+
+func (t *TicketTable) GetTicketDurationTripleWindow(ctx context.Context, guildId uint64) (TripleWindow, error) {
+	query := `
+SELECT
+    AVG(EXTRACT(EPOCH FROM (close_time - open_time))) FILTER (WHERE close_time IS NOT NULL),
+    AVG(EXTRACT(EPOCH FROM (close_time - open_time))) FILTER (WHERE close_time IS NOT NULL AND close_time > NOW() - INTERVAL '30 days'),
+    AVG(EXTRACT(EPOCH FROM (close_time - open_time))) FILTER (WHERE close_time IS NOT NULL AND close_time > NOW() - INTERVAL '7 days')
+FROM tickets
+WHERE guild_id = $1;`
+
+	var allTimeSecs, monthlySecs, weeklySecs *float64
+	if err := t.QueryRow(ctx, query, guildId).Scan(&allTimeSecs, &monthlySecs, &weeklySecs); err != nil {
+		return TripleWindow{}, err
+	}
+
+	return TripleWindow{
+		AllTime: secondsToDuration(allTimeSecs),
+		Monthly: secondsToDuration(monthlySecs),
+		Weekly:  secondsToDuration(weeklySecs),
+	}, nil
+}
+
+func secondsToDuration(secs *float64) *time.Duration {
+	if secs == nil {
+		return nil
+	}
+	d := time.Duration(*secs * float64(time.Second))
+	return &d
+}
+
+func (t *TicketTable) GetTicketCountByPanel(ctx context.Context, guildId uint64, nDays int) ([]PanelTicketCount, error) {
+	query := `
+SELECT t.panel_id, COALESCE(p.title, 'No Panel'), COUNT(*)
+FROM tickets t
+LEFT JOIN panels p ON t.panel_id = p.panel_id
+WHERE t.guild_id = $1 AND t.open_time > CURRENT_DATE - ($2 - 1) * INTERVAL '1 day'
+GROUP BY t.panel_id, p.title
+ORDER BY COUNT(*) DESC;`
+
+	rows, err := t.Query(ctx, query, guildId, nDays)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []PanelTicketCount
+	for rows.Next() {
+		var r PanelTicketCount
+		if err := rows.Scan(&r.PanelId, &r.PanelTitle, &r.Count); err != nil {
+			return nil, err
+		}
+		results = append(results, r)
+	}
+
+	return results, nil
+}
+
+func (t *TicketTable) GetThreadChannelSplit(ctx context.Context, guildId uint64, nDays int) (ThreadChannelSplit, error) {
+	query := `
+SELECT
+    COUNT(*) FILTER (WHERE is_thread = true),
+    COUNT(*) FILTER (WHERE is_thread = false)
+FROM tickets
+WHERE guild_id = $1 AND open_time > CURRENT_DATE - ($2 - 1) * INTERVAL '1 day';`
+
+	var split ThreadChannelSplit
+	if err := t.QueryRow(ctx, query, guildId, nDays).Scan(&split.ThreadCount, &split.ChannelCount); err != nil {
+		return ThreadChannelSplit{}, err
+	}
+
+	return split, nil
+}
+
+func (t *TicketTable) GetPeakHours(ctx context.Context, guildId uint64, days int) ([]PeakHourEntry, error) {
+	if days == 0 {
+		query := `
+SELECT
+    EXTRACT(DOW FROM open_time AT TIME ZONE 'UTC')::int AS day_of_week,
+    EXTRACT(HOUR FROM open_time AT TIME ZONE 'UTC')::int AS hour_of_day,
+    COUNT(*)::int AS count
+FROM tickets
+WHERE guild_id = $1
+GROUP BY day_of_week, hour_of_day
+ORDER BY day_of_week, hour_of_day;`
+
+		rows, err := t.Query(ctx, query, guildId)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		var results []PeakHourEntry
+		for rows.Next() {
+			var r PeakHourEntry
+			if err := rows.Scan(&r.DayOfWeek, &r.HourOfDay, &r.Count); err != nil {
+				return nil, err
+			}
+			results = append(results, r)
+		}
+
+		return results, nil
+	}
+
+	parsedInterval := pgtype.Interval{}
+	if err := parsedInterval.Set(time.Duration(days) * 24 * time.Hour); err != nil {
+		return nil, err
+	}
+
+	query := `
+SELECT
+    EXTRACT(DOW FROM open_time AT TIME ZONE 'UTC')::int AS day_of_week,
+    EXTRACT(HOUR FROM open_time AT TIME ZONE 'UTC')::int AS hour_of_day,
+    COUNT(*)::int AS count
+FROM tickets
+WHERE guild_id = $1 AND open_time > NOW() - $2::interval
+GROUP BY day_of_week, hour_of_day
+ORDER BY day_of_week, hour_of_day;`
+
+	rows, err := t.Query(ctx, query, guildId, parsedInterval)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []PeakHourEntry
+	for rows.Next() {
+		var r PeakHourEntry
+		if err := rows.Scan(&r.DayOfWeek, &r.HourOfDay, &r.Count); err != nil {
+			return nil, err
+		}
+		results = append(results, r)
+	}
+
+	return results, nil
+}
+
+func (t *TicketTable) GetTicketsBySource(ctx context.Context, guildId uint64, days int) ([]SourceBreakdown, error) {
+	if days == 0 {
+		query := `
+SELECT "source", COUNT(*)::int AS count
+FROM tickets
+WHERE guild_id = $1
+GROUP BY "source"
+ORDER BY count DESC;`
+
+		rows, err := t.Query(ctx, query, guildId)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+
+		var results []SourceBreakdown
+		for rows.Next() {
+			var r SourceBreakdown
+			if err := rows.Scan(&r.Source, &r.Count); err != nil {
+				return nil, err
+			}
+			results = append(results, r)
+		}
+
+		return results, nil
+	}
+
+	parsedInterval := pgtype.Interval{}
+	if err := parsedInterval.Set(time.Duration(days) * 24 * time.Hour); err != nil {
+		return nil, err
+	}
+
+	query := `
+SELECT "source", COUNT(*)::int AS count
+FROM tickets
+WHERE guild_id = $1 AND open_time > NOW() - $2::interval
+GROUP BY "source"
+ORDER BY count DESC;`
+
+	rows, err := t.Query(ctx, query, guildId, parsedInterval)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []SourceBreakdown
+	for rows.Next() {
+		var r SourceBreakdown
+		if err := rows.Scan(&r.Source, &r.Count); err != nil {
+			return nil, err
+		}
+		results = append(results, r)
+	}
+
+	return results, nil
+}
+
+func (t *TicketTable) GetBacklogTrend(ctx context.Context, guildId uint64, nDays int) ([]CountOnDate, error) {
+	query := `
+WITH opens AS (
+    SELECT date_trunc('day', open_time AT TIME ZONE 'UTC')::date AS date, COUNT(*) AS cnt
+    FROM tickets WHERE guild_id = $1 GROUP BY 1
+), closes AS (
+    SELECT date_trunc('day', close_time AT TIME ZONE 'UTC')::date AS date, COUNT(*) AS cnt
+    FROM tickets WHERE guild_id = $1 AND close_time IS NOT NULL GROUP BY 1
+), series AS (
+    SELECT d::date AS date FROM generate_series(CURRENT_DATE - ($2 - 1) * INTERVAL '1 day', CURRENT_DATE, '1 day') d
+), base_open AS (
+    SELECT COUNT(*) AS cnt FROM tickets WHERE guild_id = $1
+        AND open_time < CURRENT_DATE - ($2 - 1) * INTERVAL '1 day'
+        AND (close_time IS NULL OR close_time >= CURRENT_DATE - ($2 - 1) * INTERVAL '1 day')
+)
+SELECT s.date,
+    (SELECT cnt FROM base_open)
+    + SUM(COALESCE(o.cnt, 0)) OVER (ORDER BY s.date)
+    - SUM(COALESCE(c.cnt, 0)) OVER (ORDER BY s.date) AS count
+FROM series s
+LEFT JOIN opens o ON o.date = s.date
+LEFT JOIN closes c ON c.date = s.date
+ORDER BY s.date;`
+
+	rows, err := t.Query(ctx, query, guildId, nDays)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	counts := make([]CountOnDate, 0, nDays)
+	for rows.Next() {
+		var c CountOnDate
+		if err := rows.Scan(&c.Date, &c.Count); err != nil {
+			return nil, err
+		}
+		counts = append(counts, c)
+	}
+
+	return counts, nil
 }

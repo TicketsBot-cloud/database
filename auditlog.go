@@ -86,8 +86,9 @@ const (
 	AuditActionWhitelabelStatusSet          AuditActionType = 213
 	AuditActionWhitelabelStatusDelete       AuditActionType = 214
 
-	AuditActionBotStaffAdd    AuditActionType = 300
-	AuditActionBotStaffRemove AuditActionType = 301
+	AuditActionBotStaffAdd        AuditActionType = 300
+	AuditActionBotStaffRemove     AuditActionType = 301
+	AuditActionBotStaffTierUpdate AuditActionType = 302
 
 	AuditActionGlobalBlacklistAdd    AuditActionType = 310
 	AuditActionGlobalBlacklistRemove AuditActionType = 311
@@ -124,14 +125,35 @@ const (
 	AuditActionGalleryRemove  AuditActionType = 403
 	AuditActionGalleryImport  AuditActionType = 404
 
-	AuditActionAutomationCreate  AuditActionType = 410
-	AuditActionAutomationUpdate  AuditActionType = 411
-	AuditActionAutomationDelete  AuditActionType = 412
-	AuditActionAutomationPublish AuditActionType = 413
-	AuditActionAutomationRevert  AuditActionType = 414
-	AuditActionAutomationEnable  AuditActionType = 415
-	AuditActionAutomationDisable AuditActionType = 416
-	AuditActionAutomationImport  AuditActionType = 417
+	AuditActionOnboardingComplete AuditActionType = 410
+	AuditActionOnboardingSkip     AuditActionType = 411
+
+	AuditActionAffiliateApply      AuditActionType = 420
+	AuditActionAffiliateApprove    AuditActionType = 421
+	AuditActionAffiliateRevoke     AuditActionType = 422
+	AuditActionAffiliateCreate     AuditActionType = 423
+	AuditActionAffiliateRedeem     AuditActionType = 424
+	AuditActionAffiliateVoid       AuditActionType = 425
+	AuditActionAffiliateUpdateRate AuditActionType = 426
+	AuditActionAffiliateUpdateCode AuditActionType = 427
+
+	AuditActionNotificationPreferencesUpdate AuditActionType = 430
+	AuditActionUserEmailUpdate               AuditActionType = 431
+	AuditActionUserEmailDelete               AuditActionType = 432
+	AuditActionNotificationMarkRead          AuditActionType = 433
+	AuditActionNotificationMarkAllRead       AuditActionType = 434
+
+	AuditActionEmailVerify             AuditActionType = 435
+	AuditActionEmailResendVerification AuditActionType = 436
+
+	AuditActionAutomationCreate  AuditActionType = 440
+	AuditActionAutomationUpdate  AuditActionType = 441
+	AuditActionAutomationDelete  AuditActionType = 442
+	AuditActionAutomationPublish AuditActionType = 443
+	AuditActionAutomationRevert  AuditActionType = 444
+	AuditActionAutomationEnable  AuditActionType = 445
+	AuditActionAutomationDisable AuditActionType = 446
+	AuditActionAutomationImport  AuditActionType = 447
 )
 
 type AuditResourceType int16
@@ -167,8 +189,15 @@ const (
 	AuditResourceKBCategory            AuditResourceType = 28
 	AuditResourceKBSettings            AuditResourceType = 29
 	AuditResourceGalleryListing        AuditResourceType = 30
-	AuditResourceAutomation            AuditResourceType = 31
-	AuditResourceAutomationRun         AuditResourceType = 32
+	AuditResourceOnboarding            AuditResourceType = 31
+	AuditResourceAffiliate             AuditResourceType = 32
+	AuditResourceAffiliateReferral     AuditResourceType = 33
+	AuditResourceNotificationPrefs     AuditResourceType = 34
+	AuditResourceUserEmail             AuditResourceType = 35
+	AuditResourceNotification          AuditResourceType = 36
+	AuditResourceUserEmailVerification AuditResourceType = 37
+	AuditResourceAutomation            AuditResourceType = 40
+	AuditResourceAutomationRun         AuditResourceType = 41
 )
 
 type AuditLogEntry struct {

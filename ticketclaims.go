@@ -39,17 +39,6 @@ func (c *TicketClaims) Get(ctx context.Context, guildId uint64, ticketId int) (u
 	return
 }
 
-func (c *TicketClaims) ImportBulk(ctx context.Context, guildId uint64, claims map[int]uint64) (err error) {
-	rows := make([][]interface{}, 0)
-
-	for ticketId, userId := range claims {
-		rows = append(rows, []interface{}{guildId, ticketId, userId})
-	}
-
-	_, err = c.CopyFrom(ctx, pgx.Identifier{"ticket_claims"}, []string{"guild_id", "ticket_id", "user_id"}, pgx.CopyFromRows(rows))
-	return
-}
-
 func (c *TicketClaims) Set(ctx context.Context, guildId uint64, ticketId int, userId uint64) (err error) {
 	query := `INSERT INTO ticket_claims("guild_id", "ticket_id", "user_id") VALUES($1, $2, $3) ON CONFLICT("guild_id", "ticket_id") DO UPDATE SET "user_id" = $3;`
 	_, err = c.Exec(ctx, query, guildId, ticketId, userId)
@@ -80,6 +69,20 @@ WHERE ticket_claims.guild_id = $1 AND ticket_claims.user_id = $2 AND tickets.ope
 
 func (c *TicketClaims) GetClaimedCount(ctx context.Context, guildId, userId uint64) (count int, e error) {
 	query := `SELECT COUNT(*) FROM ticket_claims WHERE "guild_id" = $1 AND "user_id" = $2;`
+	if err := c.QueryRow(ctx, query, guildId, userId).Scan(&count); err != nil && err != pgx.ErrNoRows {
+		e = err
+	}
+
+	return
+}
+
+func (c *TicketClaims) GetOpenClaimedCount(ctx context.Context, guildId, userId uint64) (count int, e error) {
+	query := `
+SELECT COUNT(*)
+FROM ticket_claims
+INNER JOIN tickets ON ticket_claims.guild_id = tickets.guild_id AND ticket_claims.ticket_id = tickets.id
+WHERE ticket_claims.guild_id = $1 AND ticket_claims.user_id = $2 AND tickets.open = true;`
+
 	if err := c.QueryRow(ctx, query, guildId, userId).Scan(&count); err != nil && err != pgx.ErrNoRows {
 		e = err
 	}
