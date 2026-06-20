@@ -173,7 +173,11 @@ SELECT
 	integrations.reviewed_at,
 	COALESCE(counts.count, 0) AS guild_count
 FROM custom_integrations AS integrations
-LEFT OUTER JOIN custom_integration_guild_counts counts ON integrations.id = counts.integration_id
+LEFT JOIN (
+	SELECT integration_id, COUNT(*)::int AS count
+	FROM custom_integration_guilds
+	GROUP BY integration_id
+) counts ON counts.integration_id = integrations.id
 WHERE "owner_id" = $1;`
 
 	rows, err := i.Query(ctx, query, ownerId)
@@ -231,7 +235,11 @@ SELECT
 	integrations.reviewed_at,
 	COALESCE(counts.count, 0) AS guild_count
 FROM custom_integrations AS integrations
-LEFT OUTER JOIN custom_integration_guild_counts counts ON integrations.id = counts.integration_id
+LEFT JOIN (
+	SELECT integration_id, COUNT(*)::int AS count
+	FROM custom_integration_guilds
+	GROUP BY integration_id
+) counts ON counts.integration_id = integrations.id
 WHERE integrations.public = TRUE AND integrations.approved = FALSE AND integrations.rejection_reason IS NULL
 ORDER BY integrations.id DESC
 LIMIT $1 OFFSET $2;`
@@ -258,7 +266,11 @@ SELECT
 	integrations.reviewed_at,
 	COALESCE(counts.count, 0) AS guild_count
 FROM custom_integrations AS integrations
-LEFT OUTER JOIN custom_integration_guild_counts counts ON integrations.id = counts.integration_id
+LEFT JOIN (
+	SELECT integration_id, COUNT(*)::int AS count
+	FROM custom_integration_guilds
+	GROUP BY integration_id
+) counts ON counts.integration_id = integrations.id
 WHERE integrations.approved = TRUE
 ORDER BY integrations.id DESC
 LIMIT $1 OFFSET $2;`
@@ -285,7 +297,11 @@ SELECT
 	integrations.reviewed_at,
 	COALESCE(counts.count, 0) AS guild_count
 FROM custom_integrations AS integrations
-LEFT OUTER JOIN custom_integration_guild_counts counts ON integrations.id = counts.integration_id
+LEFT JOIN (
+	SELECT integration_id, COUNT(*)::int AS count
+	FROM custom_integration_guilds
+	GROUP BY integration_id
+) counts ON counts.integration_id = integrations.id
 WHERE integrations.rejection_reason IS NOT NULL
 ORDER BY integrations.reviewed_at DESC NULLS LAST
 LIMIT $1 OFFSET $2;`
@@ -377,7 +393,11 @@ SELECT
 	CASE WHEN active.integration_id IS NOT NULL THEN TRUE ELSE FALSE END AS added
 FROM custom_integrations as integrations
 LEFT OUTER JOIN active ON active.integration_id = integrations.id
-LEFT OUTER JOIN custom_integration_guild_counts counts ON integrations.id = counts.integration_id
+LEFT JOIN (
+	SELECT integration_id, COUNT(*)::int AS count
+	FROM custom_integration_guilds
+	GROUP BY integration_id
+) counts ON counts.integration_id = integrations.id
 WHERE active.integration_id IS NOT NULL OR
 	((integrations.public = 't' AND integrations.approved = 't') OR integrations.owner_id = $2)
 ORDER BY active.integration_id NULLS LAST, guild_count DESC
