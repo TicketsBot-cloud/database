@@ -19,9 +19,10 @@ const (
 )
 
 const (
-	GalleryListingTypePanel = "panel"
-	GalleryListingTypeTag   = "tag"
-	GalleryListingTypeForm  = "form"
+	GalleryListingTypePanel      = "panel"
+	GalleryListingTypeTag        = "tag"
+	GalleryListingTypeForm       = "form"
+	GalleryListingTypeAutomation = "automation"
 )
 
 type GalleryListing struct {
@@ -491,6 +492,16 @@ WHERE "id" = $1;`
 		listing.WelcomeMessage,
 	)
 	return err
+}
+
+// CountByTypeAndSubmitter returns the number of listings matching both type and submitter.
+func (t *GalleryListingsTable) CountByTypeAndSubmitter(ctx context.Context, listingType string, submitterUserId uint64) (int, error) {
+	query := `SELECT COUNT(*) FROM gallery_listings WHERE "listing_type" = $1 AND "submitter_user_id" = $2;`
+	var count int
+	if err := t.QueryRow(ctx, query, listingType, submitterUserId).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 // Delete removes a gallery listing by ID.

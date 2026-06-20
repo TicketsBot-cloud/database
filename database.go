@@ -20,6 +20,7 @@ type Database struct {
 	AutoCloseExclude               *AutoCloseExclude
 	Automations                    *AutomationsTable
 	AutomationRuns                 *AutomationRunsTable
+	AutomationRunSuspensions       *AutomationRunSuspensionsTable
 	AutomationCronSchedules        *AutomationCronSchedulesTable
 	Blacklist                      *Blacklist
 	BotStaff                       *BotStaff
@@ -133,6 +134,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		AutoCloseExclude:               newAutoCloseExclude(pool),
 		Automations:                    newAutomationsTable(pool),
 		AutomationRuns:                 newAutomationRunsTable(pool),
+		AutomationRunSuspensions:       newAutomationRunSuspensionsTable(pool),
 		AutomationCronSchedules:        newAutomationCronSchedulesTable(pool),
 		Blacklist:                      newBlacklist(pool),
 		BotStaff:                       newBotStaff(pool),
@@ -368,8 +370,9 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.WhitelabelStatuses,
 		d.WhitelabelUsers,
 		d.Automations,
-		d.AutomationRuns,            // depends on automations
-		d.AutomationCronSchedules,   // depends on automations
+		d.AutomationRuns,           // depends on automations
+		d.AutomationRunSuspensions, // depends on automation_runs
+		d.AutomationCronSchedules,  // depends on automations
 		d.AuditLog,
 		d.AdminAnalytics,
 	)

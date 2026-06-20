@@ -17,6 +17,7 @@ const (
 	AutomationRunStatusRateLimited = "rate_limited"
 	AutomationRunStatusTimedOut    = "timed_out"
 	AutomationRunStatusSkipped     = "skipped"
+	AutomationRunStatusSuspended   = "suspended"
 )
 
 type AutomationRun struct {

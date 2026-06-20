@@ -17,6 +17,12 @@ type GalleryTagSnapshot struct {
 	Embed   *CustomEmbedWithFields `json:"embed,omitempty"`
 }
 
+type GalleryAutomationSnapshot struct {
+	Graph       AutomationGraph `json:"graph"`
+	TriggerKind string          `json:"trigger_kind"`
+	Premium     bool            `json:"premium"`
+}
+
 type GalleryFormSnapshot struct {
 	Title  string                     `json:"title"`
 	Inputs []GalleryFormInputSnapshot `json:"inputs"`
