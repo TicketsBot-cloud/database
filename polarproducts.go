@@ -26,7 +26,8 @@ type PolarProduct struct {
 	Name             string    `json:"name"`
 	Description      string    `json:"description"`
 	Interval         string    `json:"interval"`
-	PriceGbp         int       `json:"price_gbp"`
+	Price            int       `json:"price"`
+	Currency         string    `json:"currency"`
 	Features         []string  `json:"features"`
 	Highlighted      bool      `json:"highlighted"`
 	SortOrder        int       `json:"sort_order"`
@@ -69,7 +70,8 @@ func scanPolarProduct(row pgx.Row) (PolarProduct, error) {
 		&p.Name,
 		&p.Description,
 		&p.Interval,
-		&p.PriceGbp,
+		&p.Price,
+		&p.Currency,
 		&features,
 		&p.Highlighted,
 		&p.SortOrder,
@@ -134,7 +136,8 @@ func (t *PolarProducts) Create(ctx context.Context, tx pgx.Tx, product PolarProd
 		product.Name,
 		product.Description,
 		product.Interval,
-		product.PriceGbp,
+		product.Price,
+		product.Currency,
 		featuresArray,
 		product.Highlighted,
 		product.SortOrder,
@@ -152,7 +155,8 @@ func (t *PolarProducts) Update(ctx context.Context, tx pgx.Tx, product PolarProd
 		product.Name,
 		product.Description,
 		product.Interval,
-		product.PriceGbp,
+		product.Price,
+		product.Currency,
 		featuresArray,
 		product.Highlighted,
 		product.SortOrder,
