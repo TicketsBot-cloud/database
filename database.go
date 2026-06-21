@@ -26,7 +26,6 @@ type Database struct {
 	CloseReason                    *CloseMetadataTable
 	CloseRequest                   *CloseRequestTable
 	CustomIntegrations             *CustomIntegrationTable
-	CustomIntegrationGuildCounts   *CustomIntegrationGuildCountsView
 	CustomIntegrationGuilds        *CustomIntegrationGuildsTable
 	CustomIntegrationHeaders       *CustomIntegrationHeadersTable
 	CustomIntegrationPlaceholders  *CustomIntegrationPlaceholdersTable
@@ -136,7 +135,6 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		CloseReason:                    newCloseReasonTable(pool),
 		CloseRequest:                   newCloseRequestTable(pool),
 		CustomIntegrations:             newCustomIntegrationTable(pool),
-		CustomIntegrationGuildCounts:   newCustomIntegrationGuildCountsView(pool),
 		CustomIntegrationGuilds:        newCustomIntegrationGuildsTable(pool),
 		CustomIntegrationHeaders:       newCustomIntegrationHeadersTable(pool),
 		CustomIntegrationPlaceholders:  newCustomIntegrationPlaceholdersTable(pool),
@@ -265,7 +263,6 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.ClaimSettings,
 		d.CustomIntegrations,
 		d.CustomIntegrationGuilds,
-		d.CustomIntegrationGuildCounts,
 		d.CustomIntegrationHeaders,
 		d.CustomIntegrationPlaceholders,
 		d.CustomIntegrationSecrets,
@@ -364,12 +361,6 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.AuditLog,
 		d.AdminAnalytics,
 	)
-}
-
-func (d *Database) Views() []View {
-	return []View{
-		d.CustomIntegrationGuildCounts,
-	}
 }
 
 func mustCreate(ctx context.Context, pool *pgxpool.Pool, tables ...Table) {
