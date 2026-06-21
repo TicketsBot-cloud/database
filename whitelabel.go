@@ -88,3 +88,24 @@ func (w *WhitelabelBotTable) DeleteByToken(ctx context.Context, token string) er
 	_, err := w.Exec(ctx, query, token)
 	return err
 }
+
+func (w *WhitelabelBotTable) GetBotsBySharder(ctx context.Context, sharderTotal, sharderID int) ([]WhitelabelBot, error) {
+	query := `SELECT "user_id", "bot_id", "public_key", "token" FROM whitelabel WHERE "bot_id" % $1 = $2;`
+
+	rows, err := w.Query(ctx, query, sharderTotal, sharderID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var bots []WhitelabelBot
+	for rows.Next() {
+		var bot WhitelabelBot
+		if err := rows.Scan(&bot.UserId, &bot.BotId, &bot.PublicKey, &bot.Token); err != nil {
+			return nil, err
+		}
+		bots = append(bots, bot)
+	}
+
+	return bots, nil
+}
