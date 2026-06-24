@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 
-	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -978,7 +977,7 @@ WHERE "guild_id" = $1;
 	return
 }
 
-func (p *PanelTable) DisableSome(ctx context.Context, guildId uint64, freeLimit int) error {
+func (p *PanelTable) ForceDisableSome(ctx context.Context, guildId uint64, freeLimit int) error {
 	txOpts := pgx.TxOptions{
 		IsoLevel:       pgx.Serializable,
 		AccessMode:     pgx.ReadWrite,
@@ -989,45 +988,38 @@ func (p *PanelTable) DisableSome(ctx context.Context, guildId uint64, freeLimit 
 	if err != nil {
 		return err
 	}
+	defer tx.Rollback(ctx)
 
 	var panelCount int
-	{
-		query := `SELECT COUNT(*) FROM panels WHERE guild_id = $1 and "force_disabled" = false;`
-		if err := tx.QueryRow(ctx, query, guildId).Scan(&panelCount); err != nil {
-			return err
-		}
+	if err := tx.QueryRow(ctx, `SELECT COUNT(*) FROM panels WHERE "guild_id" = $1 AND "force_disabled" = false;`, guildId).Scan(&panelCount); err != nil {
+		return err
 	}
 
 	if panelCount > freeLimit {
-		// Find panels to disable
-		query := `SELECT "panel_id" FROM panels WHERE guild_id = $1 and "force_disabled" = false ORDER BY "panel_id" DESC LIMIT $2;`
-		rows, err := tx.Query(ctx, query, guildId, panelCount-freeLimit)
-		if err != nil {
+		// Too many enabled: disable the excess, newest first.
+		query := `
+UPDATE panels SET "force_disabled" = true
+WHERE "guild_id" = $1
+AND "panel_id" IN (
+	SELECT "panel_id" FROM panels
+	WHERE "guild_id" = $1 AND "force_disabled" = false
+	ORDER BY "panel_id" DESC LIMIT $2
+);`
+		if _, err := tx.Exec(ctx, query, guildId, panelCount-freeLimit); err != nil {
 			return err
 		}
-
-		var toDisable []int
-		for rows.Next() {
-			var panelId int
-			if err := rows.Scan(&panelId); err != nil {
-				return err
-			}
-
-			toDisable = append(toDisable, panelId)
-		}
-
-		// Disable panels
-		if len(toDisable) > 0 {
-			query := `UPDATE panels SET "force_disabled" = true WHERE "panel_id" = ANY($1) AND "guild_id" = $2;`
-
-			idArray := &pgtype.Int4Array{}
-			if err := idArray.Set(toDisable); err != nil {
-				return err
-			}
-
-			if _, err := tx.Exec(ctx, query, idArray, guildId); err != nil {
-				return err
-			}
+	} else if panelCount < freeLimit {
+		// Too few enabled: re-enable force-disabled panels to fill the vacancy, oldest first.
+		query := `
+UPDATE panels SET "force_disabled" = false
+WHERE "guild_id" = $1
+AND "panel_id" IN (
+	SELECT "panel_id" FROM panels
+	WHERE "guild_id" = $1 AND "force_disabled" = true
+	ORDER BY "panel_id" ASC LIMIT $2
+);`
+		if _, err := tx.Exec(ctx, query, guildId, freeLimit-panelCount); err != nil {
+			return err
 		}
 	}
 
