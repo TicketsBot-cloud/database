@@ -154,6 +154,29 @@ func (i *CustomIntegrationTable) GetOwnedCount(ctx context.Context, userId uint6
 	return
 }
 
+// ListPublicOwnerIds returns distinct owner IDs of all integrations flagged public
+// (pending review or approved). Used to keep public-integration authors cached.
+func (i *CustomIntegrationTable) ListPublicOwnerIds(ctx context.Context) ([]uint64, error) {
+	query := `SELECT DISTINCT "owner_id" FROM custom_integrations WHERE "public" = TRUE;`
+
+	rows, err := i.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+
+	var ownerIds []uint64
+	for rows.Next() {
+		var ownerId uint64
+		if err := rows.Scan(&ownerId); err != nil {
+			return nil, err
+		}
+
+		ownerIds = append(ownerIds, ownerId)
+	}
+
+	return ownerIds, nil
+}
+
 func (i *CustomIntegrationTable) GetAllOwned(ctx context.Context, ownerId uint64) ([]CustomIntegrationWithGuildCount, error) {
 	query := `
 SELECT
