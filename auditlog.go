@@ -85,6 +85,7 @@ const (
 	AuditActionWhitelabelCreateInteractions AuditActionType = 212
 	AuditActionWhitelabelStatusSet          AuditActionType = 213
 	AuditActionWhitelabelStatusDelete       AuditActionType = 214
+	AuditActionWhitelabelResync             AuditActionType = 215
 
 	AuditActionBotStaffAdd        AuditActionType = 300
 	AuditActionBotStaffRemove     AuditActionType = 301
