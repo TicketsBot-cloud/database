@@ -14,6 +14,7 @@ type KBArticle struct {
 	GuildId     uint64                 `json:"guild_id,string"`
 	Title       string                 `json:"title"`
 	Slug        string                 `json:"slug"`
+	Description *string                `json:"description"`
 	Content     *string                `json:"content"`
 	Embed       *CustomEmbedWithFields `json:"embed"`
 	CategoryIds []int                  `json:"category_ids"`
@@ -41,6 +42,7 @@ CREATE TABLE IF NOT EXISTS kb_articles(
 	"guild_id" int8 NOT NULL,
 	"title" varchar(100) NOT NULL,
 	"slug" varchar(100) NOT NULL,
+	"description" varchar(255) DEFAULT NULL,
 	"content" text DEFAULT NULL CONSTRAINT kb_content_length CHECK (length(content) <= 4096),
 	"embed" JSONB DEFAULT NULL,
 	"category_ids" int4[] DEFAULT '{}',
@@ -75,7 +77,7 @@ CREATE TRIGGER kb_articles_search_vector_trigger
 `
 }
 
-var kbArticleColumns = `"id", "guild_id", "title", "slug", "content", "embed", "category_ids", "keywords", "position", "published", "created_at", "updated_at"`
+var kbArticleColumns = `"id", "guild_id", "title", "slug", "description", "content", "embed", "category_ids", "keywords", "position", "published", "created_at", "updated_at"`
 
 func scanKBArticle(row pgx.Row) (KBArticle, error) {
 	var article KBArticle
@@ -88,6 +90,7 @@ func scanKBArticle(row pgx.Row) (KBArticle, error) {
 		&article.GuildId,
 		&article.Title,
 		&article.Slug,
+		&article.Description,
 		&article.Content,
 		&embedRaw,
 		&categoryIds,
@@ -296,8 +299,8 @@ type KBArticleSummary struct {
 
 func (t *KBArticlesTable) Create(ctx context.Context, article KBArticle) (int, error) {
 	query := `
-INSERT INTO kb_articles("guild_id", "title", "slug", "content", "embed", "category_ids", "keywords", "position", "published")
-VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
+INSERT INTO kb_articles("guild_id", "title", "slug", "description", "content", "embed", "category_ids", "keywords", "position", "published")
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING "id";
 `
 
@@ -318,6 +321,7 @@ RETURNING "id";
 		article.GuildId,
 		article.Title,
 		article.Slug,
+		article.Description,
 		article.Content,
 		embedRaw,
 		categoryIds,
@@ -331,8 +335,8 @@ RETURNING "id";
 func (t *KBArticlesTable) Update(ctx context.Context, article KBArticle) error {
 	query := `
 UPDATE kb_articles
-SET "title" = $2, "slug" = $3, "content" = $4, "embed" = $5, "category_ids" = $6, "keywords" = $7, "position" = $8, "published" = $9, "updated_at" = NOW()
-WHERE "id" = $1 AND "guild_id" = $10;
+SET "title" = $2, "slug" = $3, "description" = $4, "content" = $5, "embed" = $6, "category_ids" = $7, "keywords" = $8, "position" = $9, "published" = $10, "updated_at" = NOW()
+WHERE "id" = $1 AND "guild_id" = $11;
 `
 
 	var embedRaw *string
@@ -351,6 +355,7 @@ WHERE "id" = $1 AND "guild_id" = $10;
 		article.Id,
 		article.Title,
 		article.Slug,
+		article.Description,
 		article.Content,
 		embedRaw,
 		categoryIds,
