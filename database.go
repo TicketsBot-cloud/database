@@ -56,6 +56,7 @@ type Database struct {
 	GuildLeaveTime                 *GuildLeaveTime
 	GuildMetadata                  *GuildMetadataTable
 	KBArticles                     *KBArticlesTable
+	KBArticleFeedback              *KBArticleFeedbackTable
 	KBCategories                   *KBCategoriesTable
 	KBSettings                     *KBSettingsTable
 	LegacyPremiumEntitlementGuilds *LegacyPremiumEntitlementGuilds
@@ -165,6 +166,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		GuildLeaveTime:                 newGuildLeaveTime(pool),
 		GuildMetadata:                  newGuildMetadataTable(pool),
 		KBArticles:                     newKBArticles(pool),
+		KBArticleFeedback:              newKBArticleFeedback(pool),
 		KBCategories:                   newKBCategories(pool),
 		KBSettings:                     newKBSettings(pool),
 		LegacyPremiumEntitlementGuilds: newLegacyPremiumEntitlementGuildsTable(pool),
@@ -323,6 +325,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.Tag,
 		d.KBCategories,           // Knowledge base categories
 		d.KBArticles,             // Knowledge base articles (references categories)
+		d.KBArticleFeedback,      // Must be created after kb_articles (references articles)
 		d.KBSettings,             // Knowledge base customisation settings
 		d.PanelKBCategories,      // Panel-to-KB-category associations
 		d.Tickets,                // Must be created before members table
