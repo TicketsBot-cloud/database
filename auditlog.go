@@ -59,6 +59,7 @@ const (
 	AuditActionTicketCloseRequest      AuditActionType = 94
 	AuditActionTicketClaim             AuditActionType = 95
 	AuditActionTicketUnclaim           AuditActionType = 96
+	AuditActionTicketTransfer          AuditActionType = 97
 
 	AuditActionGuildIntegrationActivate   AuditActionType = 100
 	AuditActionGuildIntegrationUpdate     AuditActionType = 101
