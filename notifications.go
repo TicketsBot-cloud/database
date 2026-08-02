@@ -80,8 +80,8 @@ func (t *NotificationsTable) Create(ctx context.Context, userId uint64, category
 	}, nil
 }
 
-func (t *NotificationsTable) ListByUserId(ctx context.Context, userId uint64, category *string, limit, offset int) ([]Notification, error) {
-	rows, err := t.Query(ctx, notificationsListByUserId, userId, category, limit, offset)
+func (t *NotificationsTable) ListByUserId(ctx context.Context, userId uint64, categories []string, limit, offset int) ([]Notification, error) {
+	rows, err := t.Query(ctx, notificationsListByUserId, userId, categories, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -108,9 +108,9 @@ func (t *NotificationsTable) CountUnreadByUserId(ctx context.Context, userId uin
 	return count, nil
 }
 
-func (t *NotificationsTable) CountByUserId(ctx context.Context, userId uint64, category *string) (int, error) {
+func (t *NotificationsTable) CountByUserId(ctx context.Context, userId uint64, categories []string) (int, error) {
 	var count int
-	if err := t.QueryRow(ctx, notificationsCountByUserId, userId, category).Scan(&count); err != nil {
+	if err := t.QueryRow(ctx, notificationsCountByUserId, userId, categories).Scan(&count); err != nil {
 		return 0, err
 	}
 	return count, nil
