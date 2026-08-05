@@ -1375,7 +1375,7 @@ SELECT d::date AS date, COUNT(t.id) AS count
 FROM generate_series(CURRENT_DATE - ($2 - 1) * INTERVAL '1 day', CURRENT_DATE, '1 day') AS d
 LEFT JOIN tickets t ON t.guild_id = $1 AND date_trunc('day', t.open_time AT TIME ZONE 'UTC') = d::date
 GROUP BY d::date
-ORDER BY d::date DESC;`
+ORDER BY d::date;`
 
 	rows, err := t.Query(ctx, query, guildId, nDays)
 	if err != nil {
