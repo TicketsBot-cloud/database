@@ -157,9 +157,14 @@ type CloseReasonCount struct {
 	Count  int    `json:"count"`
 }
 
-func (c *CloseMetadataTable) GetTopCloseReasonsWithCount(ctx context.Context, guildId uint64, panelId *int, limit, days int, filter *PanelFilter) ([]CloseReasonCount, error) {
+func (c *CloseMetadataTable) GetTopCloseReasonsWithCount(ctx context.Context, guildId uint64, panelId *int, limit, days int, caseInsensitive bool, filter *PanelFilter) ([]CloseReasonCount, error) {
+	reasonExpr := "cr.close_reason"
+	if caseInsensitive {
+		reasonExpr = "LOWER(cr.close_reason)"
+	}
+
 	query := `
-SELECT cr.close_reason, COUNT(*)::int AS count
+SELECT ` + reasonExpr + ` AS close_reason, COUNT(*)::int AS count
 FROM close_reason cr
 INNER JOIN tickets t ON cr.guild_id = t.guild_id AND cr.ticket_id = t.id
 WHERE cr.guild_id = $1
@@ -169,7 +174,7 @@ WHERE cr.guild_id = $1
   AND cr.close_reason != 'Automatically closed due to inactivity'
   AND ($4 = 0 OR t.open_time > NOW() - make_interval(days => $4))` +
 		PanelPredicate("t", 5, 6) + `
-GROUP BY cr.close_reason
+GROUP BY ` + reasonExpr + `
 ORDER BY COUNT(*) DESC
 LIMIT $3;`
 
