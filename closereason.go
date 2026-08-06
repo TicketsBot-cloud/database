@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
@@ -156,7 +157,7 @@ type CloseReasonCount struct {
 	Count  int    `json:"count"`
 }
 
-func (c *CloseMetadataTable) GetTopCloseReasonsWithCount(ctx context.Context, guildId uint64, panelId *int, limit, days int) ([]CloseReasonCount, error) {
+func (c *CloseMetadataTable) GetTopCloseReasonsWithCount(ctx context.Context, guildId uint64, panelId *int, limit, days int, filter *PanelFilter) ([]CloseReasonCount, error) {
 	query := `
 SELECT cr.close_reason, COUNT(*)::int AS count
 FROM close_reason cr
@@ -166,12 +167,18 @@ WHERE cr.guild_id = $1
   AND cr.close_reason IS NOT NULL
   AND cr.close_reason != ''
   AND cr.close_reason != 'Automatically closed due to inactivity'
-  AND ($4 = 0 OR t.open_time > NOW() - make_interval(days => $4))
+  AND ($4 = 0 OR t.open_time > NOW() - make_interval(days => $4))` +
+		PanelPredicate("t", 5, 6) + `
 GROUP BY cr.close_reason
 ORDER BY COUNT(*) DESC
 LIMIT $3;`
 
-	rows, err := c.Query(ctx, query, guildId, panelId, limit, days)
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return nil, fmt.Errorf("top close reasons: %w", err)
+	}
+
+	rows, err := c.Query(ctx, query, guildId, panelId, limit, days, arr, unassigned)
 	if err != nil {
 		return nil, err
 	}
@@ -189,17 +196,29 @@ LIMIT $3;`
 	return results, nil
 }
 
+// GetAutoCloseVsManualClose is the worker-compatible wrapper. Delegates to
+// GetAutoCloseVsManualCloseFiltered with no panel filter.
 func (c *CloseMetadataTable) GetAutoCloseVsManualClose(ctx context.Context, guildId uint64, nDays int) (AutoCloseStats, error) {
+	return c.GetAutoCloseVsManualCloseFiltered(ctx, guildId, nDays, nil)
+}
+
+func (c *CloseMetadataTable) GetAutoCloseVsManualCloseFiltered(ctx context.Context, guildId uint64, nDays int, filter *PanelFilter) (AutoCloseStats, error) {
 	query := `
 SELECT
     COUNT(*) FILTER (WHERE cr.closed_by IS NULL),
     COUNT(*) FILTER (WHERE cr.closed_by IS NOT NULL)
 FROM close_reason cr
 INNER JOIN tickets t ON cr.guild_id = t.guild_id AND cr.ticket_id = t.id
-WHERE cr.guild_id = $1 AND t.close_time > CURRENT_DATE - ($2 - 1) * INTERVAL '1 day';`
+WHERE cr.guild_id = $1 AND t.close_time > CURRENT_DATE - ($2 - 1) * INTERVAL '1 day'` +
+		PanelPredicate("t", 3, 4)
+
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return AutoCloseStats{}, fmt.Errorf("auto close stats: %w", err)
+	}
 
 	var stats AutoCloseStats
-	if err := c.QueryRow(ctx, query, guildId, nDays).Scan(&stats.AutoClosed, &stats.ManualClosed); err != nil {
+	if err := c.QueryRow(ctx, query, guildId, nDays, arr, unassigned).Scan(&stats.AutoClosed, &stats.ManualClosed); err != nil {
 		return AutoCloseStats{}, err
 	}
 

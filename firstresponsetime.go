@@ -2,10 +2,12 @@ package database
 
 import (
 	"context"
+	"fmt"
+	"time"
+
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"time"
 )
 
 type FirstResponseTime struct {
@@ -100,74 +102,65 @@ func (f *FirstResponseTime) GetAverageAllTimeUser(ctx context.Context, guildId, 
 	return
 }
 
+// GetAverageTripleWindow returns the three fixed-window averages. It delegates
+// to GetAverageWindows with days=0 and no panel filter, preserving the
+// existing signature for the worker module.
 func (f *FirstResponseTime) GetAverageTripleWindow(ctx context.Context, guildId uint64) (TripleWindow, error) {
+	mw, err := f.GetAverageWindows(ctx, guildId, 0, nil)
+	if err != nil {
+		return TripleWindow{}, err
+	}
+	return mw.TripleWindow(), nil
+}
+
+// GetAverageWindows returns four first-response-time averages in one round trip:
+// the exact selected range, all time, monthly, and weekly. The selected window
+// equals all-time when days == 0.
+func (f *FirstResponseTime) GetAverageWindows(ctx context.Context, guildId uint64, days int, filter *PanelFilter) (MetricWindows, error) {
 	query := `
 SELECT
+    AVG(frt.response_time) FILTER (WHERE $2 = 0 OR t.open_time > NOW() - make_interval(days => $2)),
     AVG(frt.response_time),
     AVG(frt.response_time) FILTER (WHERE t.open_time > NOW() - INTERVAL '30 days'),
     AVG(frt.response_time) FILTER (WHERE t.open_time > NOW() - INTERVAL '7 days')
 FROM first_response_time frt
 INNER JOIN tickets t ON frt.guild_id = t.guild_id AND frt.ticket_id = t.id
-WHERE frt.guild_id = $1;`
+WHERE frt.guild_id = $1` + PanelPredicate("t", 3, 4)
 
-	var allTime, monthly, weekly *time.Duration
-	if err := f.QueryRow(ctx, query, guildId).Scan(&allTime, &monthly, &weekly); err != nil {
-		return TripleWindow{}, err
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return MetricWindows{}, fmt.Errorf("first response time windows: %w", err)
 	}
 
-	return TripleWindow{
-		AllTime: allTime,
-		Monthly: monthly,
-		Weekly:  weekly,
-	}, nil
+	var mw MetricWindows
+	if err := f.QueryRow(ctx, query, guildId, days, arr, unassigned).Scan(
+		&mw.Selected, &mw.AllTime, &mw.Monthly, &mw.Weekly,
+	); err != nil {
+		return MetricWindows{}, err
+	}
+
+	return mw, nil
 }
 
-func (f *FirstResponseTime) GetAverageByHour(ctx context.Context, guildId uint64, days int) ([]ResponseTimeByHour, error) {
-	if days == 0 {
-		query := `
+func (f *FirstResponseTime) GetAverageByHour(ctx context.Context, guildId uint64, days int, filter *PanelFilter) ([]ResponseTimeByHour, error) {
+	query := `
 SELECT
     EXTRACT(HOUR FROM t.open_time)::int AS hour_of_day,
     AVG(frt.response_time) AS avg_response_time
 FROM first_response_time frt
 INNER JOIN tickets t ON frt.guild_id = t.guild_id AND frt.ticket_id = t.id
 WHERE frt.guild_id = $1
+    AND ($2 = 0 OR t.open_time > NOW() - make_interval(days => $2))` +
+		PanelPredicate("t", 3, 4) + `
 GROUP BY hour_of_day
 ORDER BY hour_of_day;`
 
-		rows, err := f.Query(ctx, query, guildId)
-		if err != nil {
-			return nil, err
-		}
-		defer rows.Close()
-
-		var results []ResponseTimeByHour
-		for rows.Next() {
-			var r ResponseTimeByHour
-			if err := rows.Scan(&r.HourOfDay, &r.AvgResponseTime); err != nil {
-				return nil, err
-			}
-			results = append(results, r)
-		}
-
-		return results, nil
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return nil, fmt.Errorf("response time by hour: %w", err)
 	}
 
-	parsedInterval := pgtype.Interval{}
-	if err := parsedInterval.Set(time.Duration(days) * 24 * time.Hour); err != nil {
-		return nil, err
-	}
-
-	query := `
-SELECT
-    EXTRACT(HOUR FROM t.open_time)::int AS hour_of_day,
-    AVG(frt.response_time) AS avg_response_time
-FROM first_response_time frt
-INNER JOIN tickets t ON frt.guild_id = t.guild_id AND frt.ticket_id = t.id
-WHERE frt.guild_id = $1 AND t.open_time > NOW() - $2::interval
-GROUP BY hour_of_day
-ORDER BY hour_of_day;`
-
-	rows, err := f.Query(ctx, query, guildId, parsedInterval)
+	rows, err := f.Query(ctx, query, guildId, days, arr, unassigned)
 	if err != nil {
 		return nil, err
 	}

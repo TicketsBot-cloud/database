@@ -2,9 +2,8 @@ package database
 
 import (
 	"context"
-	"time"
+	"fmt"
 
-	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -80,27 +79,13 @@ type AverageMessageCounts struct {
 	AvgTotalMessages *float64 `json:"avg_total_messages"`
 }
 
-func (t *TicketMessageCounts) GetAverageMessageCounts(ctx context.Context, guildId uint64, days int) (avg AverageMessageCounts, e error) {
-	if days == 0 {
-		query := `
-SELECT
-    AVG(tmc."staff_messages"),
-    AVG(tmc."user_messages"),
-    AVG(tmc."staff_messages" + tmc."user_messages")
-FROM ticket_message_counts tmc
-INNER JOIN tickets t ON tmc."guild_id" = t."guild_id" AND tmc."ticket_id" = t."id"
-WHERE tmc."guild_id" = $1 AND t."open" = false;`
-		if err := t.QueryRow(ctx, query, guildId).Scan(&avg.AvgStaffMessages, &avg.AvgUserMessages, &avg.AvgTotalMessages); err != nil && err != pgx.ErrNoRows {
-			e = err
-		}
-		return
-	}
+// GetAverageMessageCounts is the worker-compatible wrapper. Delegates to
+// GetAverageMessageCountsFiltered with no panel filter.
+func (t *TicketMessageCounts) GetAverageMessageCounts(ctx context.Context, guildId uint64, days int) (AverageMessageCounts, error) {
+	return t.GetAverageMessageCountsFiltered(ctx, guildId, days, nil)
+}
 
-	parsedInterval := pgtype.Interval{}
-	if err := parsedInterval.Set(time.Duration(days) * 24 * time.Hour); err != nil {
-		return avg, err
-	}
-
+func (t *TicketMessageCounts) GetAverageMessageCountsFiltered(ctx context.Context, guildId uint64, days int, filter *PanelFilter) (avg AverageMessageCounts, e error) {
 	query := `
 SELECT
     AVG(tmc."staff_messages"),
@@ -108,11 +93,18 @@ SELECT
     AVG(tmc."staff_messages" + tmc."user_messages")
 FROM ticket_message_counts tmc
 INNER JOIN tickets t ON tmc."guild_id" = t."guild_id" AND tmc."ticket_id" = t."id"
-WHERE tmc."guild_id" = $1 AND t."open" = false AND t."open_time" > NOW() - $2::interval;`
-	if err := t.QueryRow(ctx, query, guildId, parsedInterval).Scan(&avg.AvgStaffMessages, &avg.AvgUserMessages, &avg.AvgTotalMessages); err != nil && err != pgx.ErrNoRows {
-		e = err
+WHERE tmc."guild_id" = $1 AND t."open" = false
+    AND ($2 = 0 OR t."open_time" > NOW() - make_interval(days => $2))` +
+		PanelPredicate("t", 3, 4)
+
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return avg, fmt.Errorf("average message counts: %w", err)
 	}
 
+	if err := t.QueryRow(ctx, query, guildId, days, arr, unassigned).Scan(&avg.AvgStaffMessages, &avg.AvgUserMessages, &avg.AvgTotalMessages); err != nil && err != pgx.ErrNoRows {
+		e = err
+	}
 	return
 }
 
@@ -121,36 +113,30 @@ type OneTouchResolution struct {
 	TotalClosed   int `json:"total_closed"`
 }
 
-func (t *TicketMessageCounts) GetOneTouchResolutionRate(ctx context.Context, guildId uint64, days int) (result OneTouchResolution, e error) {
-	if days == 0 {
-		query := `
-SELECT
-    COUNT(*) FILTER (WHERE tmc."staff_messages" = 1),
-    COUNT(*)
-FROM ticket_message_counts tmc
-INNER JOIN tickets t ON tmc."guild_id" = t."guild_id" AND tmc."ticket_id" = t."id"
-WHERE tmc."guild_id" = $1 AND t."open" = false;`
-		if err := t.QueryRow(ctx, query, guildId).Scan(&result.OneTouchCount, &result.TotalClosed); err != nil && err != pgx.ErrNoRows {
-			e = err
-		}
-		return
-	}
+// GetOneTouchResolutionRate is the worker-compatible wrapper. Delegates to
+// GetOneTouchResolutionRateFiltered with no panel filter.
+func (t *TicketMessageCounts) GetOneTouchResolutionRate(ctx context.Context, guildId uint64, days int) (OneTouchResolution, error) {
+	return t.GetOneTouchResolutionRateFiltered(ctx, guildId, days, nil)
+}
 
-	parsedInterval := pgtype.Interval{}
-	if err := parsedInterval.Set(time.Duration(days) * 24 * time.Hour); err != nil {
-		return result, err
-	}
-
+func (t *TicketMessageCounts) GetOneTouchResolutionRateFiltered(ctx context.Context, guildId uint64, days int, filter *PanelFilter) (result OneTouchResolution, e error) {
 	query := `
 SELECT
     COUNT(*) FILTER (WHERE tmc."staff_messages" = 1),
     COUNT(*)
 FROM ticket_message_counts tmc
 INNER JOIN tickets t ON tmc."guild_id" = t."guild_id" AND tmc."ticket_id" = t."id"
-WHERE tmc."guild_id" = $1 AND t."open" = false AND t."open_time" > NOW() - $2::interval;`
-	if err := t.QueryRow(ctx, query, guildId, parsedInterval).Scan(&result.OneTouchCount, &result.TotalClosed); err != nil && err != pgx.ErrNoRows {
-		e = err
+WHERE tmc."guild_id" = $1 AND t."open" = false
+    AND ($2 = 0 OR t."open_time" > NOW() - make_interval(days => $2))` +
+		PanelPredicate("t", 3, 4)
+
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return result, fmt.Errorf("one touch resolution: %w", err)
 	}
 
+	if err := t.QueryRow(ctx, query, guildId, days, arr, unassigned).Scan(&result.OneTouchCount, &result.TotalClosed); err != nil && err != pgx.ErrNoRows {
+		e = err
+	}
 	return
 }

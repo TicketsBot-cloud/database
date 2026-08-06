@@ -8,6 +8,27 @@ type TripleWindow struct {
 	Weekly  *time.Duration
 }
 
+// MetricWindows extends TripleWindow with a selected-range aggregate. The
+// selected window honours the exact days parameter from the query string,
+// replacing the bucketed approach that previously picked the nearest fixed
+// window and silently mislabelled it.
+type MetricWindows struct {
+	Selected *time.Duration // equals AllTime when days == 0
+	AllTime  *time.Duration
+	Monthly  *time.Duration
+	Weekly   *time.Duration
+}
+
+// TripleWindow drops the selected window, for callers that only need the
+// three fixed buckets (the worker's /stats server command).
+func (mw MetricWindows) TripleWindow() TripleWindow {
+	return TripleWindow{
+		AllTime: mw.AllTime,
+		Monthly: mw.Monthly,
+		Weekly:  mw.Weekly,
+	}
+}
+
 type CountOnDate struct {
 	Date  time.Time `json:"date"`
 	Count uint64    `json:"count"`
@@ -50,7 +71,7 @@ type PeakHourEntry struct {
 
 type SourceBreakdown struct {
 	Source TicketSource `json:"source"`
-	Count int          `json:"count"`
+	Count  int          `json:"count"`
 }
 
 type ResponseTimeByHour struct {

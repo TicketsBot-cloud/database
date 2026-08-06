@@ -2,8 +2,9 @@ package database
 
 import (
 	"context"
+	"fmt"
 
-	"github.com/jackc/pgx/pgtype"
+	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 )
@@ -42,10 +43,33 @@ func (r *ServiceRatings) Get(ctx context.Context, guildId uint64, ticketId int) 
 	}
 }
 
-func (r *ServiceRatings) GetCount(ctx context.Context, guildId uint64) (count int, err error) {
-	query := `SELECT COUNT(*) from service_ratings WHERE "guild_id" = $1;`
-	err = r.QueryRow(ctx, query, guildId).Scan(&count)
-	return
+// GetCount is the worker-compatible wrapper. Delegates to GetCountFiltered
+// with days=0 and no panel filter.
+func (r *ServiceRatings) GetCount(ctx context.Context, guildId uint64) (int, error) {
+	return r.GetCountFiltered(ctx, guildId, 0, nil)
+}
+
+// GetCountFiltered returns the count of feedback ratings, optionally scoped by
+// time window and panel filter.
+func (r *ServiceRatings) GetCountFiltered(ctx context.Context, guildId uint64, days int, filter *PanelFilter) (int, error) {
+	query := `
+SELECT COUNT(*)
+FROM service_ratings sr
+INNER JOIN tickets t ON sr.guild_id = t.guild_id AND sr.ticket_id = t.id
+WHERE sr.guild_id = $1
+    AND ($2 = 0 OR t.open_time > NOW() - make_interval(days => $2))` +
+		PanelPredicate("t", 3, 4)
+
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return 0, fmt.Errorf("feedback count: %w", err)
+	}
+
+	var count int
+	if err := r.QueryRow(ctx, query, guildId, days, arr, unassigned).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 func (r *ServiceRatings) GetCountClaimedBy(ctx context.Context, guildId, userId uint64) (count int, err error) {
@@ -61,17 +85,36 @@ WHERE service_ratings.guild_id = $1 AND ticket_claims.user_id = $2;
 	return
 }
 
-func (r *ServiceRatings) GetAverage(ctx context.Context, guildId uint64) (average float32, err error) {
-	// Returns NULL if no ratings
-	var f *float32
+// GetAverage is the worker-compatible wrapper. Delegates to
+// GetAverageFiltered with days=0 and no panel filter.
+func (r *ServiceRatings) GetAverage(ctx context.Context, guildId uint64) (float32, error) {
+	return r.GetAverageFiltered(ctx, guildId, 0, nil)
+}
 
-	query := `SELECT AVG(rating) from service_ratings WHERE "guild_id" = $1;`
-	err = r.QueryRow(ctx, query, guildId).Scan(&f)
-	if f != nil {
-		average = *f
+// GetAverageFiltered returns the average feedback rating, optionally scoped by
+// time window and panel filter.
+func (r *ServiceRatings) GetAverageFiltered(ctx context.Context, guildId uint64, days int, filter *PanelFilter) (float32, error) {
+	query := `
+SELECT AVG(sr.rating)
+FROM service_ratings sr
+INNER JOIN tickets t ON sr.guild_id = t.guild_id AND sr.ticket_id = t.id
+WHERE sr.guild_id = $1
+    AND ($2 = 0 OR t.open_time > NOW() - make_interval(days => $2))` +
+		PanelPredicate("t", 3, 4)
+
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return 0, fmt.Errorf("average rating: %w", err)
 	}
 
-	return
+	var f *float32
+	if err := r.QueryRow(ctx, query, guildId, days, arr, unassigned).Scan(&f); err != nil {
+		return 0, err
+	}
+	if f != nil {
+		return *f, nil
+	}
+	return 0, nil
 }
 
 func (r *ServiceRatings) GetAverageClaimedBy(ctx context.Context, guildId, userId uint64) (average float32, err error) {
@@ -186,10 +229,30 @@ GROUP BY sr.rating ORDER BY sr.rating;`
 	return dist, nil
 }
 
+// GetDistribution is the worker-compatible wrapper. Delegates to
+// GetDistributionFiltered with days=0 and no panel filter.
 func (r *ServiceRatings) GetDistribution(ctx context.Context, guildId uint64) ([5]int, error) {
-	query := `SELECT rating, COUNT(*) FROM service_ratings WHERE guild_id = $1 GROUP BY rating ORDER BY rating;`
+	return r.GetDistributionFiltered(ctx, guildId, 0, nil)
+}
 
-	rows, err := r.Query(ctx, query, guildId)
+// GetDistributionFiltered returns the 1-5 star distribution, optionally
+// scoped by time window and panel filter.
+func (r *ServiceRatings) GetDistributionFiltered(ctx context.Context, guildId uint64, days int, filter *PanelFilter) ([5]int, error) {
+	query := `
+SELECT sr.rating, COUNT(*)
+FROM service_ratings sr
+INNER JOIN tickets t ON sr.guild_id = t.guild_id AND sr.ticket_id = t.id
+WHERE sr.guild_id = $1
+    AND ($2 = 0 OR t.open_time > NOW() - make_interval(days => $2))` +
+		PanelPredicate("t", 3, 4) + `
+GROUP BY sr.rating ORDER BY sr.rating;`
+
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return [5]int{}, fmt.Errorf("feedback distribution: %w", err)
+	}
+
+	rows, err := r.Query(ctx, query, guildId, days, arr, unassigned)
 	if err != nil {
 		return [5]int{}, err
 	}
@@ -209,16 +272,28 @@ func (r *ServiceRatings) GetDistribution(ctx context.Context, guildId uint64) ([
 	return dist, nil
 }
 
+// GetResponseRate is the worker-compatible wrapper. Delegates to
+// GetResponseRateFiltered with no panel filter.
 func (r *ServiceRatings) GetResponseRate(ctx context.Context, guildId uint64, nDays int) (FeedbackResponseRate, error) {
+	return r.GetResponseRateFiltered(ctx, guildId, nDays, nil)
+}
+
+func (r *ServiceRatings) GetResponseRateFiltered(ctx context.Context, guildId uint64, nDays int, filter *PanelFilter) (FeedbackResponseRate, error) {
 	query := `
 SELECT COUNT(t.id) AS closed, COUNT(sr.rating) AS rated
 FROM tickets t
 LEFT JOIN service_ratings sr ON t.guild_id = sr.guild_id AND t.id = sr.ticket_id
 WHERE t.guild_id = $1 AND t.open = false
-    AND t.close_time > CURRENT_DATE - ($2 - 1) * INTERVAL '1 day';`
+    AND t.close_time > CURRENT_DATE - ($2 - 1) * INTERVAL '1 day'` +
+		PanelPredicate("t", 3, 4)
+
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return FeedbackResponseRate{}, fmt.Errorf("feedback response rate: %w", err)
+	}
 
 	var result FeedbackResponseRate
-	if err := r.QueryRow(ctx, query, guildId, nDays).Scan(&result.ClosedTickets, &result.RatedTickets); err != nil {
+	if err := r.QueryRow(ctx, query, guildId, nDays, arr, unassigned).Scan(&result.ClosedTickets, &result.RatedTickets); err != nil {
 		return FeedbackResponseRate{}, err
 	}
 

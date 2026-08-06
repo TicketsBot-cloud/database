@@ -1298,12 +1298,47 @@ func (t *TicketTable) GetTotalTicketCountInterval(ctx context.Context, guildId u
 	return
 }
 
-func (t *TicketTable) GetTotalTicketCount(ctx context.Context, guildId uint64) (count int, e error) {
-	query := `SELECT COUNT(*) FROM tickets WHERE "guild_id" = $1;`
-	if err := t.QueryRow(ctx, query, guildId).Scan(&count); err != nil {
-		e = err
+// GetTotalTicketCount returns the all-time ticket count for a guild. Delegates
+// to GetTotalTicketCountFiltered with no panel filter to preserve the existing
+// signature for the worker module.
+func (t *TicketTable) GetTotalTicketCount(ctx context.Context, guildId uint64) (int, error) {
+	return t.GetTotalTicketCountFiltered(ctx, guildId, nil)
+}
+
+// GetTotalTicketCountFiltered returns the all-time ticket count, optionally
+// restricted to the given panels.
+func (t *TicketTable) GetTotalTicketCountFiltered(ctx context.Context, guildId uint64, filter *PanelFilter) (int, error) {
+	query := `SELECT COUNT(*) FROM tickets t WHERE t.guild_id = $1` + PanelPredicate("t", 2, 3)
+
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return 0, fmt.Errorf("total ticket count: %w", err)
 	}
-	return
+
+	var count int
+	if err := t.QueryRow(ctx, query, guildId, arr, unassigned).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
+}
+
+// CountOpenTickets returns the number of currently open tickets, optionally
+// restricted to the given panels. This is a bespoke function rather than an
+// extension of TicketQueryOptions, whose HasWhereClause() logic is inverted
+// and carries its own panel fields.
+func (t *TicketTable) CountOpenTickets(ctx context.Context, guildId uint64, filter *PanelFilter) (int, error) {
+	query := `SELECT COUNT(*) FROM tickets t WHERE t.guild_id = $1 AND t.open = true` + PanelPredicate("t", 2, 3)
+
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return 0, fmt.Errorf("count open tickets: %w", err)
+	}
+
+	var count int
+	if err := t.QueryRow(ctx, query, guildId, arr, unassigned).Scan(&count); err != nil {
+		return 0, err
+	}
+	return count, nil
 }
 
 func (t *TicketTable) Close(ctx context.Context, ticketId int, guildId uint64) (err error) {
@@ -1369,15 +1404,31 @@ SET last_ticket_id = EXCLUDED.last_ticket_id;`
 	return
 }
 
+// GetTicketsPerDay is the worker-compatible wrapper. Delegates to
+// GetTicketsPerDayFiltered with no panel filter.
 func (t *TicketTable) GetTicketsPerDay(ctx context.Context, guildId uint64, nDays int) ([]CountOnDate, error) {
+	return t.GetTicketsPerDayFiltered(ctx, guildId, nDays, nil)
+}
+
+// GetTicketsPerDayFiltered returns daily ticket counts over the last nDays.
+// The panel predicate goes in the JOIN ON condition, NOT the WHERE, because
+// this is a LEFT JOIN against generate_series. Putting it in the WHERE
+// silently converts to an inner join and drops zero-count days.
+func (t *TicketTable) GetTicketsPerDayFiltered(ctx context.Context, guildId uint64, nDays int, filter *PanelFilter) ([]CountOnDate, error) {
 	query := `
 SELECT d::date AS date, COUNT(t.id) AS count
 FROM generate_series(CURRENT_DATE - ($2 - 1) * INTERVAL '1 day', CURRENT_DATE, '1 day') AS d
-LEFT JOIN tickets t ON t.guild_id = $1 AND date_trunc('day', t.open_time AT TIME ZONE 'UTC') = d::date
+LEFT JOIN tickets t ON t.guild_id = $1 AND date_trunc('day', t.open_time AT TIME ZONE 'UTC') = d::date` +
+		PanelPredicate("t", 3, 4) + `
 GROUP BY d::date
 ORDER BY d::date;`
 
-	rows, err := t.Query(ctx, query, guildId, nDays)
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return nil, fmt.Errorf("tickets per day: %w", err)
+	}
+
+	rows, err := t.Query(ctx, query, guildId, nDays, arr, unassigned)
 	if err != nil {
 		return nil, err
 	}
@@ -1395,15 +1446,21 @@ ORDER BY d::date;`
 	return counts, nil
 }
 
-func (t *TicketTable) GetTicketsPerWeek(ctx context.Context, guildId uint64, nDays int) ([]CountOnDate, error) {
+func (t *TicketTable) GetTicketsPerWeek(ctx context.Context, guildId uint64, nDays int, filter *PanelFilter) ([]CountOnDate, error) {
 	query := `
-SELECT date_trunc('week', open_time AT TIME ZONE 'UTC')::date AS date, COUNT(*)::bigint AS count
-FROM tickets
-WHERE guild_id = $1 AND ($2 = 0 OR open_time > CURRENT_DATE - $2 * INTERVAL '1 day')
+SELECT date_trunc('week', t.open_time AT TIME ZONE 'UTC')::date AS date, COUNT(*)::bigint AS count
+FROM tickets t
+WHERE t.guild_id = $1 AND ($2 = 0 OR t.open_time > CURRENT_DATE - $2 * INTERVAL '1 day')` +
+		PanelPredicate("t", 3, 4) + `
 GROUP BY 1
 ORDER BY 1;`
 
-	rows, err := t.Query(ctx, query, guildId, nDays)
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return nil, fmt.Errorf("tickets per week: %w", err)
+	}
+
+	rows, err := t.Query(ctx, query, guildId, nDays, arr, unassigned)
 	if err != nil {
 		return nil, err
 	}
@@ -1421,24 +1478,46 @@ ORDER BY 1;`
 	return counts, nil
 }
 
+// GetTicketDurationTripleWindow is the worker-compatible wrapper. Delegates
+// to GetDurationWindows with days=0 and no panel filter.
 func (t *TicketTable) GetTicketDurationTripleWindow(ctx context.Context, guildId uint64) (TripleWindow, error) {
-	query := `
-SELECT
-    AVG(EXTRACT(EPOCH FROM (close_time - open_time))) FILTER (WHERE close_time IS NOT NULL),
-    AVG(EXTRACT(EPOCH FROM (close_time - open_time))) FILTER (WHERE close_time IS NOT NULL AND close_time > NOW() - INTERVAL '30 days'),
-    AVG(EXTRACT(EPOCH FROM (close_time - open_time))) FILTER (WHERE close_time IS NOT NULL AND close_time > NOW() - INTERVAL '7 days')
-FROM tickets
-WHERE guild_id = $1;`
-
-	var allTimeSecs, monthlySecs, weeklySecs *float64
-	if err := t.QueryRow(ctx, query, guildId).Scan(&allTimeSecs, &monthlySecs, &weeklySecs); err != nil {
+	mw, err := t.GetDurationWindows(ctx, guildId, 0, nil)
+	if err != nil {
 		return TripleWindow{}, err
 	}
+	return mw.TripleWindow(), nil
+}
 
-	return TripleWindow{
-		AllTime: secondsToDuration(allTimeSecs),
-		Monthly: secondsToDuration(monthlySecs),
-		Weekly:  secondsToDuration(weeklySecs),
+// GetDurationWindows returns four resolution-time averages in one round trip:
+// the exact selected range, all time, monthly, and weekly. The selected window
+// equals all-time when days == 0.
+func (t *TicketTable) GetDurationWindows(ctx context.Context, guildId uint64, days int, filter *PanelFilter) (MetricWindows, error) {
+	query := `
+SELECT
+    AVG(EXTRACT(EPOCH FROM (t.close_time - t.open_time))) FILTER (WHERE t.close_time IS NOT NULL AND ($2 = 0 OR t.close_time > NOW() - make_interval(days => $2))),
+    AVG(EXTRACT(EPOCH FROM (t.close_time - t.open_time))) FILTER (WHERE t.close_time IS NOT NULL),
+    AVG(EXTRACT(EPOCH FROM (t.close_time - t.open_time))) FILTER (WHERE t.close_time IS NOT NULL AND t.close_time > NOW() - INTERVAL '30 days'),
+    AVG(EXTRACT(EPOCH FROM (t.close_time - t.open_time))) FILTER (WHERE t.close_time IS NOT NULL AND t.close_time > NOW() - INTERVAL '7 days')
+FROM tickets t
+WHERE t.guild_id = $1` + PanelPredicate("t", 3, 4)
+
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return MetricWindows{}, fmt.Errorf("duration windows: %w", err)
+	}
+
+	var selectedSecs, allTimeSecs, monthlySecs, weeklySecs *float64
+	if err := t.QueryRow(ctx, query, guildId, days, arr, unassigned).Scan(
+		&selectedSecs, &allTimeSecs, &monthlySecs, &weeklySecs,
+	); err != nil {
+		return MetricWindows{}, err
+	}
+
+	return MetricWindows{
+		Selected: secondsToDuration(selectedSecs),
+		AllTime:  secondsToDuration(allTimeSecs),
+		Monthly:  secondsToDuration(monthlySecs),
+		Weekly:   secondsToDuration(weeklySecs),
 	}, nil
 }
 
@@ -1450,16 +1529,22 @@ func secondsToDuration(secs *float64) *time.Duration {
 	return &d
 }
 
-func (t *TicketTable) GetTicketCountByPanel(ctx context.Context, guildId uint64, nDays int) ([]PanelTicketCount, error) {
+func (t *TicketTable) GetTicketCountByPanel(ctx context.Context, guildId uint64, nDays int, filter *PanelFilter) ([]PanelTicketCount, error) {
 	query := `
 SELECT t.panel_id, COALESCE(p.title, 'No Panel'), COUNT(*)
 FROM tickets t
 LEFT JOIN panels p ON t.panel_id = p.panel_id
-WHERE t.guild_id = $1 AND t.open_time > CURRENT_DATE - ($2 - 1) * INTERVAL '1 day'
+WHERE t.guild_id = $1 AND t.open_time > CURRENT_DATE - ($2 - 1) * INTERVAL '1 day'` +
+		PanelPredicate("t", 3, 4) + `
 GROUP BY t.panel_id, p.title
 ORDER BY COUNT(*) DESC;`
 
-	rows, err := t.Query(ctx, query, guildId, nDays)
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return nil, fmt.Errorf("ticket count by panel: %w", err)
+	}
+
+	rows, err := t.Query(ctx, query, guildId, nDays, arr, unassigned)
 	if err != nil {
 		return nil, err
 	}
@@ -1477,68 +1562,53 @@ ORDER BY COUNT(*) DESC;`
 	return results, nil
 }
 
+// GetThreadChannelSplit is the worker-compatible wrapper. Delegates to
+// GetThreadChannelSplitFiltered with no panel filter.
 func (t *TicketTable) GetThreadChannelSplit(ctx context.Context, guildId uint64, nDays int) (ThreadChannelSplit, error) {
+	return t.GetThreadChannelSplitFiltered(ctx, guildId, nDays, nil)
+}
+
+func (t *TicketTable) GetThreadChannelSplitFiltered(ctx context.Context, guildId uint64, nDays int, filter *PanelFilter) (ThreadChannelSplit, error) {
 	query := `
 SELECT
-    COUNT(*) FILTER (WHERE is_thread = true),
-    COUNT(*) FILTER (WHERE is_thread = false)
-FROM tickets
-WHERE guild_id = $1 AND open_time > CURRENT_DATE - ($2 - 1) * INTERVAL '1 day';`
+    COUNT(*) FILTER (WHERE t.is_thread = true),
+    COUNT(*) FILTER (WHERE t.is_thread = false)
+FROM tickets t
+WHERE t.guild_id = $1 AND t.open_time > CURRENT_DATE - ($2 - 1) * INTERVAL '1 day'` +
+		PanelPredicate("t", 3, 4)
+
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return ThreadChannelSplit{}, fmt.Errorf("thread channel split: %w", err)
+	}
 
 	var split ThreadChannelSplit
-	if err := t.QueryRow(ctx, query, guildId, nDays).Scan(&split.ThreadCount, &split.ChannelCount); err != nil {
+	if err := t.QueryRow(ctx, query, guildId, nDays, arr, unassigned).Scan(&split.ThreadCount, &split.ChannelCount); err != nil {
 		return ThreadChannelSplit{}, err
 	}
 
 	return split, nil
 }
 
-func (t *TicketTable) GetPeakHours(ctx context.Context, guildId uint64, days int) ([]PeakHourEntry, error) {
-	if days == 0 {
-		query := `
-SELECT
-    EXTRACT(DOW FROM open_time AT TIME ZONE 'UTC')::int AS day_of_week,
-    EXTRACT(HOUR FROM open_time AT TIME ZONE 'UTC')::int AS hour_of_day,
-    COUNT(*)::int AS count
-FROM tickets
-WHERE guild_id = $1
-GROUP BY day_of_week, hour_of_day
-ORDER BY day_of_week, hour_of_day;`
-
-		rows, err := t.Query(ctx, query, guildId)
-		if err != nil {
-			return nil, err
-		}
-		defer rows.Close()
-
-		var results []PeakHourEntry
-		for rows.Next() {
-			var r PeakHourEntry
-			if err := rows.Scan(&r.DayOfWeek, &r.HourOfDay, &r.Count); err != nil {
-				return nil, err
-			}
-			results = append(results, r)
-		}
-
-		return results, nil
-	}
-
-	parsedInterval := pgtype.Interval{}
-	if err := parsedInterval.Set(time.Duration(days) * 24 * time.Hour); err != nil {
-		return nil, err
-	}
-
+func (t *TicketTable) GetPeakHours(ctx context.Context, guildId uint64, days int, filter *PanelFilter) ([]PeakHourEntry, error) {
 	query := `
 SELECT
-    EXTRACT(DOW FROM open_time AT TIME ZONE 'UTC')::int AS day_of_week,
-    EXTRACT(HOUR FROM open_time AT TIME ZONE 'UTC')::int AS hour_of_day,
+    EXTRACT(DOW FROM t.open_time AT TIME ZONE 'UTC')::int AS day_of_week,
+    EXTRACT(HOUR FROM t.open_time AT TIME ZONE 'UTC')::int AS hour_of_day,
     COUNT(*)::int AS count
-FROM tickets
-WHERE guild_id = $1 AND open_time > NOW() - $2::interval
+FROM tickets t
+WHERE t.guild_id = $1
+    AND ($2 = 0 OR t.open_time > NOW() - make_interval(days => $2))` +
+		PanelPredicate("t", 3, 4) + `
 GROUP BY day_of_week, hour_of_day
 ORDER BY day_of_week, hour_of_day;`
 
-	rows, err := t.Query(ctx, query, guildId, parsedInterval)
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return nil, fmt.Errorf("peak hours: %w", err)
+	}
+
+	rows, err := t.Query(ctx, query, guildId, days, arr, unassigned)
 	if err != nil {
 		return nil, err
 	}
@@ -1556,46 +1626,22 @@ ORDER BY day_of_week, hour_of_day;`
 	return results, nil
 }
 
-func (t *TicketTable) GetTicketsBySource(ctx context.Context, guildId uint64, days int) ([]SourceBreakdown, error) {
-	if days == 0 {
-		query := `
-SELECT "source", COUNT(*)::int AS count
-FROM tickets
-WHERE guild_id = $1
-GROUP BY "source"
-ORDER BY count DESC;`
-
-		rows, err := t.Query(ctx, query, guildId)
-		if err != nil {
-			return nil, err
-		}
-		defer rows.Close()
-
-		var results []SourceBreakdown
-		for rows.Next() {
-			var r SourceBreakdown
-			if err := rows.Scan(&r.Source, &r.Count); err != nil {
-				return nil, err
-			}
-			results = append(results, r)
-		}
-
-		return results, nil
-	}
-
-	parsedInterval := pgtype.Interval{}
-	if err := parsedInterval.Set(time.Duration(days) * 24 * time.Hour); err != nil {
-		return nil, err
-	}
-
+func (t *TicketTable) GetTicketsBySource(ctx context.Context, guildId uint64, days int, filter *PanelFilter) ([]SourceBreakdown, error) {
 	query := `
-SELECT "source", COUNT(*)::int AS count
-FROM tickets
-WHERE guild_id = $1 AND open_time > NOW() - $2::interval
-GROUP BY "source"
+SELECT t."source", COUNT(*)::int AS count
+FROM tickets t
+WHERE t.guild_id = $1
+    AND ($2 = 0 OR t.open_time > NOW() - make_interval(days => $2))` +
+		PanelPredicate("t", 3, 4) + `
+GROUP BY t."source"
 ORDER BY count DESC;`
 
-	rows, err := t.Query(ctx, query, guildId, parsedInterval)
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return nil, fmt.Errorf("tickets by source: %w", err)
+	}
+
+	rows, err := t.Query(ctx, query, guildId, days, arr, unassigned)
 	if err != nil {
 		return nil, err
 	}
@@ -1613,20 +1659,24 @@ ORDER BY count DESC;`
 	return results, nil
 }
 
-func (t *TicketTable) GetBacklogTrend(ctx context.Context, guildId uint64, nDays int) ([]CountOnDate, error) {
+func (t *TicketTable) GetBacklogTrend(ctx context.Context, guildId uint64, nDays int, filter *PanelFilter) ([]CountOnDate, error) {
+	// The same two panel-filter placeholders ($3, $4) are referenced in all
+	// three CTEs. Args() is appended once; PostgreSQL handles reuse.
+	panelPred := PanelPredicate("tickets", 3, 4)
+
 	query := `
 WITH opens AS (
     SELECT date_trunc('day', open_time AT TIME ZONE 'UTC')::date AS date, COUNT(*) AS cnt
-    FROM tickets WHERE guild_id = $1 GROUP BY 1
+    FROM tickets WHERE guild_id = $1` + panelPred + ` GROUP BY 1
 ), closes AS (
     SELECT date_trunc('day', close_time AT TIME ZONE 'UTC')::date AS date, COUNT(*) AS cnt
-    FROM tickets WHERE guild_id = $1 AND close_time IS NOT NULL GROUP BY 1
+    FROM tickets WHERE guild_id = $1 AND close_time IS NOT NULL` + panelPred + ` GROUP BY 1
 ), series AS (
     SELECT d::date AS date FROM generate_series(CURRENT_DATE - ($2 - 1) * INTERVAL '1 day', CURRENT_DATE, '1 day') d
 ), base_open AS (
     SELECT COUNT(*) AS cnt FROM tickets WHERE guild_id = $1
         AND open_time < CURRENT_DATE - ($2 - 1) * INTERVAL '1 day'
-        AND (close_time IS NULL OR close_time >= CURRENT_DATE - ($2 - 1) * INTERVAL '1 day')
+        AND (close_time IS NULL OR close_time >= CURRENT_DATE - ($2 - 1) * INTERVAL '1 day')` + panelPred + `
 )
 SELECT s.date,
     (SELECT cnt FROM base_open)
@@ -1637,7 +1687,12 @@ LEFT JOIN opens o ON o.date = s.date
 LEFT JOIN closes c ON c.date = s.date
 ORDER BY s.date;`
 
-	rows, err := t.Query(ctx, query, guildId, nDays)
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return nil, fmt.Errorf("backlog trend: %w", err)
+	}
+
+	rows, err := t.Query(ctx, query, guildId, nDays, arr, unassigned)
 	if err != nil {
 		return nil, err
 	}
