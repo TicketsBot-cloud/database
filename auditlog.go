@@ -149,6 +149,10 @@ const (
 
 	AuditActionEmailVerify             AuditActionType = 435
 	AuditActionEmailResendVerification AuditActionType = 436
+
+	AuditActionFeatureFlagToggle      AuditActionType = 440
+	AuditActionFeatureFlagCreate      AuditActionType = 441
+	AuditActionFeatureFlagRulesUpdate AuditActionType = 442
 )
 
 type AuditResourceType int16
@@ -191,6 +195,7 @@ const (
 	AuditResourceUserEmail             AuditResourceType = 35
 	AuditResourceNotification          AuditResourceType = 36
 	AuditResourceUserEmailVerification AuditResourceType = 37
+	AuditResourceFeatureFlag           AuditResourceType = 38
 )
 
 type AuditLogEntry struct {

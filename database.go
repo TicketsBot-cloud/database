@@ -43,6 +43,7 @@ type Database struct {
 	Entitlements                   *Entitlements
 	ExitSurveyResponses            *ExitSurveyResponses
 	Experiment                     *ExperimentTable
+	ExperimentExposures            *ExperimentExposuresTable
 	FirstResponseTime              *FirstResponseTime
 	FormInput                      *FormInputTable
 	FormInputOption                *FormInputOptionTable
@@ -153,6 +154,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		Entitlements:                   newEntitlementsTable(pool),
 		ExitSurveyResponses:            newExitSurveyResponses(pool),
 		Experiment:                     newExperimentTable(pool),
+		ExperimentExposures:            newExperimentExposuresTable(pool),
 		FirstResponseTime:              newFirstResponseTime(pool),
 		FormInput:                      newFormInputTable(pool),
 		Forms:                          newFormsTable(pool),
@@ -275,6 +277,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.EmbedFields, // depends on embeds
 		d.Entitlements,
 		d.Experiment,
+		d.ExperimentExposures,
 		d.DiscordEntitlements, // depends on entitlements
 		d.Skus,                // must be created before discord_store_skus, subscription_skus, multi_server_skus, polar_products
 		d.DiscordStoreSkus,    // depends on skus
