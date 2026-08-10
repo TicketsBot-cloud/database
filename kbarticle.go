@@ -396,6 +396,22 @@ WHERE "id" = $2 AND "guild_id" = $1;
 	return err
 }
 
+func (t *KBArticlesTable) SetPositions(ctx context.Context, guildId uint64, ordered []int) error {
+	if len(ordered) == 0 {
+		return nil
+	}
+
+	query := `
+UPDATE kb_articles
+SET "position" = data.position, "updated_at" = "updated_at"
+FROM (SELECT unnest($2::int[]) AS id, generate_subscripts($2::int[], 1) - 1 AS position) AS data
+WHERE kb_articles."id" = data.id AND kb_articles."guild_id" = $1;
+`
+
+	_, err := t.Exec(ctx, query, guildId, toInt4Array(ordered))
+	return err
+}
+
 func (t *KBArticlesTable) Delete(ctx context.Context, guildId uint64, articleId int) error {
 	query := `DELETE FROM kb_articles WHERE "guild_id" = $1 AND "id" = $2;`
 	_, err := t.Exec(ctx, query, guildId, articleId)
