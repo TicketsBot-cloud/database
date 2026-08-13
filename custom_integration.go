@@ -464,6 +464,25 @@ LIMIT $3 OFFSET $4;
 	return integrations, nil
 }
 
+// Mirrors the WHERE clause of GetAvailableIntegrationsWithActive so page counts match the listing.
+func (i *CustomIntegrationGuildsTable) CountAvailableIntegrations(ctx context.Context, guildId, userId uint64) (count int, err error) {
+	query := `
+WITH active AS (
+	SELECT integration_id
+	FROM custom_integration_guilds
+	WHERE guild_id=$1
+)
+SELECT COUNT(*)
+FROM custom_integrations as integrations
+LEFT OUTER JOIN active ON active.integration_id = integrations.id
+WHERE active.integration_id IS NOT NULL OR
+	((integrations.public = 't' AND integrations.approved = 't') OR integrations.owner_id = $2);
+`
+
+	err = i.QueryRow(ctx, query, guildId, userId).Scan(&count)
+	return
+}
+
 func (i *CustomIntegrationGuildsTable) CanActivate(ctx context.Context, integrationId int, userId uint64) (canActivate bool, err error) {
 	query := `
 SELECT EXISTS(
