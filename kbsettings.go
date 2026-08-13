@@ -8,15 +8,13 @@ import (
 )
 
 type KBSettings struct {
-	GuildId        uint64  `json:"guild_id,string"`
-	PrimaryBg      *int    `json:"primary_bg"`
-	CardBg         *int    `json:"card_bg"`
-	TextColour     *int    `json:"text_colour"`
-	AccentColour   *int    `json:"accent_colour"`
-	LogoUrl        *string `json:"logo_url"`
-	HideBranding   bool    `json:"hide_branding"`
-	CustomDomain   *string `json:"custom_domain"`
-	DomainVerified bool    `json:"domain_verified"`
+	GuildId      uint64  `json:"guild_id,string"`
+	PrimaryBg    *int    `json:"primary_bg"`
+	CardBg       *int    `json:"card_bg"`
+	TextColour   *int    `json:"text_colour"`
+	AccentColour *int    `json:"accent_colour"`
+	LogoUrl      *string `json:"logo_url"`
+	HideBranding bool    `json:"hide_branding"`
 }
 
 type KBSettingsTable struct {
@@ -29,6 +27,13 @@ func newKBSettings(db *pgxpool.Pool) *KBSettingsTable {
 	}
 }
 
+// Schema no longer creates the custom domain columns. Databases that already ran
+// an earlier version still have custom_domain, domain_verified and the
+// domain_status family, plus their indexes; nothing reads or writes them.
+//
+// They are deliberately not dropped here. DROP COLUMN is irreversible and this
+// file runs on every service boot, so removing them is a decision to take
+// explicitly rather than a side effect of deploying.
 func (t KBSettingsTable) Schema() string {
 	return `
 CREATE TABLE IF NOT EXISTS kb_settings(
@@ -38,17 +43,14 @@ CREATE TABLE IF NOT EXISTS kb_settings(
 	"text_colour" int4 DEFAULT NULL,
 	"accent_colour" int4 DEFAULT NULL,
 	"logo_url" text DEFAULT NULL,
-	"hide_branding" bool NOT NULL DEFAULT false,
-	"custom_domain" text DEFAULT NULL,
-	"domain_verified" bool NOT NULL DEFAULT false
+	"hide_branding" bool NOT NULL DEFAULT false
 );
-CREATE INDEX IF NOT EXISTS kb_settings_custom_domain_idx ON kb_settings("custom_domain") WHERE "custom_domain" IS NOT NULL AND "domain_verified" = true;
 `
 }
 
 func (t *KBSettingsTable) Get(ctx context.Context, guildId uint64) (KBSettings, bool, error) {
 	query := `
-SELECT "guild_id", "primary_bg", "card_bg", "text_colour", "accent_colour", "logo_url", "hide_branding", "custom_domain", "domain_verified"
+SELECT "guild_id", "primary_bg", "card_bg", "text_colour", "accent_colour", "logo_url", "hide_branding"
 FROM kb_settings
 WHERE "guild_id" = $1;
 `
@@ -62,8 +64,6 @@ WHERE "guild_id" = $1;
 		&settings.AccentColour,
 		&settings.LogoUrl,
 		&settings.HideBranding,
-		&settings.CustomDomain,
-		&settings.DomainVerified,
 	)
 
 	if err != nil {
@@ -78,17 +78,15 @@ WHERE "guild_id" = $1;
 
 func (t *KBSettingsTable) Set(ctx context.Context, settings KBSettings) error {
 	query := `
-INSERT INTO kb_settings("guild_id", "primary_bg", "card_bg", "text_colour", "accent_colour", "logo_url", "hide_branding", "custom_domain", "domain_verified")
-VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9)
+INSERT INTO kb_settings("guild_id", "primary_bg", "card_bg", "text_colour", "accent_colour", "logo_url", "hide_branding")
+VALUES($1, $2, $3, $4, $5, $6, $7)
 ON CONFLICT("guild_id") DO UPDATE SET
 	"primary_bg" = $2,
 	"card_bg" = $3,
 	"text_colour" = $4,
 	"accent_colour" = $5,
 	"logo_url" = $6,
-	"hide_branding" = $7,
-	"custom_domain" = $8,
-	"domain_verified" = $9;
+	"hide_branding" = $7;
 `
 
 	_, err := t.Exec(ctx, query,
@@ -99,43 +97,6 @@ ON CONFLICT("guild_id") DO UPDATE SET
 		settings.AccentColour,
 		settings.LogoUrl,
 		settings.HideBranding,
-		settings.CustomDomain,
-		settings.DomainVerified,
 	)
 	return err
-}
-
-// GetGuildByDomain returns the guild ID that has claimed a given custom domain (verified or not).
-// Returns 0, false if no guild has this domain.
-func (t *KBSettingsTable) GetGuildByDomain(ctx context.Context, domain string) (uint64, bool, error) {
-	query := `SELECT "guild_id" FROM kb_settings WHERE "custom_domain" = $1 LIMIT 1;`
-	var guildId uint64
-	err := t.QueryRow(ctx, query, domain).Scan(&guildId)
-	if err != nil {
-		if err == pgx.ErrNoRows {
-			return 0, false, nil
-		}
-		return 0, false, err
-	}
-	return guildId, true, nil
-}
-
-// GetAllVerifiedDomains returns all verified custom KB domains.
-func (t *KBSettingsTable) GetAllVerifiedDomains(ctx context.Context) ([]string, error) {
-	query := `SELECT "custom_domain" FROM kb_settings WHERE "custom_domain" IS NOT NULL AND "domain_verified" = true;`
-	rows, err := t.Query(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var domains []string
-	for rows.Next() {
-		var domain string
-		if err := rows.Scan(&domain); err != nil {
-			return nil, err
-		}
-		domains = append(domains, domain)
-	}
-	return domains, nil
 }
