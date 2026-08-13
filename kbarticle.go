@@ -10,19 +10,22 @@ import (
 )
 
 type KBArticle struct {
-	Id          int                    `json:"id"`
-	GuildId     uint64                 `json:"guild_id,string"`
-	Title       string                 `json:"title"`
-	Slug        string                 `json:"slug"`
-	Description *string                `json:"description"`
-	Content     *string                `json:"content"`
-	Embed       *CustomEmbedWithFields `json:"embed"`
-	CategoryIds []int                  `json:"category_ids"`
-	Keywords    []string               `json:"keywords"`
-	Position    int                    `json:"position"`
-	Published   bool                   `json:"published"`
-	CreatedAt   time.Time              `json:"created_at"`
-	UpdatedAt   time.Time              `json:"updated_at"`
+	Id               int                    `json:"id"`
+	GuildId          uint64                 `json:"guild_id,string"`
+	Title            string                 `json:"title"`
+	Slug             string                 `json:"slug"`
+	Description      *string                `json:"description"`
+	Content          *string                `json:"content"`
+	Embed            *CustomEmbedWithFields `json:"embed"`
+	CategoryIds      []int                  `json:"category_ids"`
+	Keywords         []string               `json:"keywords"`
+	Position         int                    `json:"position"`
+	Published        bool                   `json:"published"`
+	ShowHelpfulCount bool                   `json:"show_helpful_count"`
+	HelpfulCount     int                    `json:"helpful_count"`
+	NotHelpfulCount  int                    `json:"not_helpful_count"`
+	CreatedAt        time.Time              `json:"created_at"`
+	UpdatedAt        time.Time              `json:"updated_at"`
 }
 
 type KBArticlesTable struct {
@@ -49,6 +52,9 @@ CREATE TABLE IF NOT EXISTS kb_articles(
 	"keywords" text[] DEFAULT '{}',
 	"position" int4 NOT NULL DEFAULT 0,
 	"published" bool NOT NULL DEFAULT true,
+	"show_helpful_count" bool NOT NULL DEFAULT false,
+	"helpful_count" int4 NOT NULL DEFAULT 0,
+	"not_helpful_count" int4 NOT NULL DEFAULT 0,
 	"search_vector" tsvector,
 	"created_at" timestamptz NOT NULL DEFAULT NOW(),
 	"updated_at" timestamptz NOT NULL DEFAULT NOW(),
@@ -70,6 +76,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+ALTER TABLE kb_articles ADD COLUMN IF NOT EXISTS "show_helpful_count" bool NOT NULL DEFAULT false;
+ALTER TABLE kb_articles ADD COLUMN IF NOT EXISTS "helpful_count" int4 NOT NULL DEFAULT 0;
+ALTER TABLE kb_articles ADD COLUMN IF NOT EXISTS "not_helpful_count" int4 NOT NULL DEFAULT 0;
+
 DROP TRIGGER IF EXISTS kb_articles_search_vector_trigger ON kb_articles;
 CREATE TRIGGER kb_articles_search_vector_trigger
 	BEFORE INSERT OR UPDATE ON kb_articles
@@ -77,7 +87,7 @@ CREATE TRIGGER kb_articles_search_vector_trigger
 `
 }
 
-var kbArticleColumns = `"id", "guild_id", "title", "slug", "description", "content", "embed", "category_ids", "keywords", "position", "published", "created_at", "updated_at"`
+var kbArticleColumns = `"id", "guild_id", "title", "slug", "description", "content", "embed", "category_ids", "keywords", "position", "published", "show_helpful_count", "helpful_count", "not_helpful_count", "created_at", "updated_at"`
 
 func scanKBArticle(row pgx.Row) (KBArticle, error) {
 	var article KBArticle
@@ -97,6 +107,9 @@ func scanKBArticle(row pgx.Row) (KBArticle, error) {
 		&keywords,
 		&article.Position,
 		&article.Published,
+		&article.ShowHelpfulCount,
+		&article.HelpfulCount,
+		&article.NotHelpfulCount,
 		&article.CreatedAt,
 		&article.UpdatedAt,
 	)
@@ -299,8 +312,8 @@ type KBArticleSummary struct {
 
 func (t *KBArticlesTable) Create(ctx context.Context, article KBArticle) (int, error) {
 	query := `
-INSERT INTO kb_articles("guild_id", "title", "slug", "description", "content", "embed", "category_ids", "keywords", "position", "published")
-VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+INSERT INTO kb_articles("guild_id", "title", "slug", "description", "content", "embed", "category_ids", "keywords", "position", "published", "show_helpful_count")
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING "id";
 `
 
@@ -328,6 +341,7 @@ RETURNING "id";
 		keywords,
 		article.Position,
 		article.Published,
+		article.ShowHelpfulCount,
 	).Scan(&id)
 	return id, err
 }
@@ -335,8 +349,8 @@ RETURNING "id";
 func (t *KBArticlesTable) Update(ctx context.Context, article KBArticle) error {
 	query := `
 UPDATE kb_articles
-SET "title" = $2, "slug" = $3, "description" = $4, "content" = $5, "embed" = $6, "category_ids" = $7, "keywords" = $8, "position" = $9, "published" = $10, "updated_at" = NOW()
-WHERE "id" = $1 AND "guild_id" = $11;
+SET "title" = $2, "slug" = $3, "description" = $4, "content" = $5, "embed" = $6, "category_ids" = $7, "keywords" = $8, "position" = $9, "published" = $10, "show_helpful_count" = $11, "updated_at" = NOW()
+WHERE "id" = $1 AND "guild_id" = $12;
 `
 
 	var embedRaw *string
@@ -362,8 +376,39 @@ WHERE "id" = $1 AND "guild_id" = $11;
 		keywords,
 		article.Position,
 		article.Published,
+		article.ShowHelpfulCount,
 		article.GuildId,
 	)
+	return err
+}
+
+// IncrementFeedback records one web vote. Kept out of Update so that saving an
+// article cannot overwrite the tally.
+func (t *KBArticlesTable) IncrementFeedback(ctx context.Context, guildId uint64, articleId int, helpful bool) error {
+	query := `
+UPDATE kb_articles
+SET "helpful_count" = "helpful_count" + CASE WHEN $3 THEN 1 ELSE 0 END,
+    "not_helpful_count" = "not_helpful_count" + CASE WHEN $3 THEN 0 ELSE 1 END
+WHERE "id" = $2 AND "guild_id" = $1;
+`
+
+	_, err := t.Exec(ctx, query, guildId, articleId, helpful)
+	return err
+}
+
+func (t *KBArticlesTable) SetPositions(ctx context.Context, guildId uint64, ordered []int) error {
+	if len(ordered) == 0 {
+		return nil
+	}
+
+	query := `
+UPDATE kb_articles
+SET "position" = data.position, "updated_at" = "updated_at"
+FROM (SELECT unnest($2::int[]) AS id, generate_subscripts($2::int[], 1) - 1 AS position) AS data
+WHERE kb_articles."id" = data.id AND kb_articles."guild_id" = $1;
+`
+
+	_, err := t.Exec(ctx, query, guildId, toInt4Array(ordered))
 	return err
 }
 
