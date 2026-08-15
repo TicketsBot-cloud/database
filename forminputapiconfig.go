@@ -16,6 +16,7 @@ type FormInputApiConfig struct {
 	Method               string    `json:"method"`
 	CacheDurationSeconds *int      `json:"cache_duration_seconds,omitempty"`
 	NoOptionsMessage     *string   `json:"no_options_message,omitempty"`
+	BodyTemplate         *string   `json:"body_template,omitempty"`
 	CreatedAt            time.Time `json:"created_at"`
 	UpdatedAt            time.Time `json:"updated_at"`
 }
@@ -47,68 +48,67 @@ func (f FormInputApiConfigTable) Schema() string {
 		PRIMARY KEY("id")
 	);
 	CREATE INDEX IF NOT EXISTS form_input_api_config_form_input_id ON form_input_api_config("form_input_id");
+
+	ALTER TABLE form_input_api_config ADD COLUMN IF NOT EXISTS "body_template" TEXT DEFAULT NULL;
 	`
+}
+
+const formInputApiConfigColumns = `"id", "form_input_id", "endpoint_url", "method", "cache_duration_seconds", "no_options_message", "body_template", "created_at", "updated_at"`
+
+func (f *FormInputApiConfigTable) scanOne(row pgx.Row) (config FormInputApiConfig, ok bool, e error) {
+	err := row.Scan(
+		&config.Id,
+		&config.FormInputId,
+		&config.EndpointUrl,
+		&config.Method,
+		&config.CacheDurationSeconds,
+		&config.NoOptionsMessage,
+		&config.BodyTemplate,
+		&config.CreatedAt,
+		&config.UpdatedAt,
+	)
+
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return FormInputApiConfig{}, false, nil
+		} else {
+			return FormInputApiConfig{}, false, err
+		}
+	}
+
+	return config, true, nil
 }
 
 func (f *FormInputApiConfigTable) Get(ctx context.Context, formInputId int) (config FormInputApiConfig, ok bool, e error) {
 	query := `
-	SELECT "id", "form_input_id", "endpoint_url", "method", "cache_duration_seconds", "no_options_message", "created_at", "updated_at"
+	SELECT ` + formInputApiConfigColumns + `
 	FROM form_input_api_config
 	WHERE "form_input_id" = $1;`
 
-	err := f.QueryRow(ctx, query, formInputId).Scan(
-		&config.Id,
-		&config.FormInputId,
-		&config.EndpointUrl,
-		&config.Method,
-		&config.CacheDurationSeconds,
-		&config.NoOptionsMessage,
-		&config.CreatedAt,
-		&config.UpdatedAt,
-	)
+	return f.scanOne(f.QueryRow(ctx, query, formInputId))
+}
 
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return FormInputApiConfig{}, false, nil
-		} else {
-			return FormInputApiConfig{}, false, err
-		}
-	}
+func (f *FormInputApiConfigTable) GetTx(ctx context.Context, tx pgx.Tx, formInputId int) (config FormInputApiConfig, ok bool, e error) {
+	query := `
+	SELECT ` + formInputApiConfigColumns + `
+	FROM form_input_api_config
+	WHERE "form_input_id" = $1;`
 
-	return config, true, nil
+	return f.scanOne(tx.QueryRow(ctx, query, formInputId))
 }
 
 func (f *FormInputApiConfigTable) GetById(ctx context.Context, id int) (config FormInputApiConfig, ok bool, e error) {
 	query := `
-	SELECT "id", "form_input_id", "endpoint_url", "method", "cache_duration_seconds", "no_options_message", "created_at", "updated_at"
+	SELECT ` + formInputApiConfigColumns + `
 	FROM form_input_api_config
 	WHERE "id" = $1;`
 
-	err := f.QueryRow(ctx, query, id).Scan(
-		&config.Id,
-		&config.FormInputId,
-		&config.EndpointUrl,
-		&config.Method,
-		&config.CacheDurationSeconds,
-		&config.NoOptionsMessage,
-		&config.CreatedAt,
-		&config.UpdatedAt,
-	)
-
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return FormInputApiConfig{}, false, nil
-		} else {
-			return FormInputApiConfig{}, false, err
-		}
-	}
-
-	return config, true, nil
+	return f.scanOne(f.QueryRow(ctx, query, id))
 }
 
 func (f *FormInputApiConfigTable) GetByFormId(ctx context.Context, formId int) ([]FormInputApiConfig, error) {
 	query := `
-	SELECT c."id", c."form_input_id", c."endpoint_url", c."method", c."cache_duration_seconds", c."created_at", c."updated_at"
+	SELECT c."id", c."form_input_id", c."endpoint_url", c."method", c."cache_duration_seconds", c."no_options_message", c."body_template", c."created_at", c."updated_at"
 	FROM form_input_api_config c
 	INNER JOIN form_input i ON c."form_input_id" = i."id"
 	WHERE i."form_id" = $1
@@ -129,6 +129,8 @@ func (f *FormInputApiConfigTable) GetByFormId(ctx context.Context, formId int) (
 			&config.EndpointUrl,
 			&config.Method,
 			&config.CacheDurationSeconds,
+			&config.NoOptionsMessage,
+			&config.BodyTemplate,
 			&config.CreatedAt,
 			&config.UpdatedAt,
 		); err != nil {
@@ -141,37 +143,12 @@ func (f *FormInputApiConfigTable) GetByFormId(ctx context.Context, formId int) (
 }
 
 func (f *FormInputApiConfigTable) GetByFormInputId(ctx context.Context, formInputId int) (config FormInputApiConfig, ok bool, e error) {
-	query := `
-	SELECT "id", "form_input_id", "endpoint_url", "method", "cache_duration_seconds", "no_options_message", "created_at", "updated_at"
-	FROM form_input_api_config
-	WHERE "form_input_id" = $1;`
-
-	err := f.QueryRow(ctx, query, formInputId).Scan(
-		&config.Id,
-		&config.FormInputId,
-		&config.EndpointUrl,
-		&config.Method,
-		&config.CacheDurationSeconds,
-		&config.NoOptionsMessage,
-		&config.CreatedAt,
-		&config.UpdatedAt,
-	)
-
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return FormInputApiConfig{}, false, nil
-		} else {
-			return FormInputApiConfig{}, false, err
-		}
-	}
-
-	return config, true, nil
+	return f.Get(ctx, formInputId)
 }
 
 func (f *FormInputApiConfigTable) GetAllByGuild(ctx context.Context, guildId uint64) (map[int]FormInputApiConfig, error) {
-
 	query := `
-		SELECT c."id", c."form_input_id", c."endpoint_url", c."method", c."cache_duration_seconds", c."created_at", c."updated_at"
+		SELECT c."id", c."form_input_id", c."endpoint_url", c."method", c."cache_duration_seconds", c."no_options_message", c."body_template", c."created_at", c."updated_at"
 		FROM form_input_api_config c
 		INNER JOIN form_input i ON c."form_input_id" = i."id"
 		INNER JOIN forms f ON i."form_id" = f."form_id"
@@ -192,6 +169,8 @@ func (f *FormInputApiConfigTable) GetAllByGuild(ctx context.Context, guildId uin
 			&config.EndpointUrl,
 			&config.Method,
 			&config.CacheDurationSeconds,
+			&config.NoOptionsMessage,
+			&config.BodyTemplate,
 			&config.CreatedAt,
 			&config.UpdatedAt,
 		); err != nil {
@@ -203,59 +182,61 @@ func (f *FormInputApiConfigTable) GetAllByGuild(ctx context.Context, guildId uin
 	return configs, rows.Err()
 }
 
-func (f *FormInputApiConfigTable) Create(ctx context.Context, formInputId int, endpointUrl string, method string, cacheDurationSeconds *int, noOptionsMessage *string) (int, error) {
+func (f *FormInputApiConfigTable) Create(ctx context.Context, formInputId int, endpointUrl string, method string, cacheDurationSeconds *int, noOptionsMessage *string, bodyTemplate *string) (int, error) {
 	query := `
-	INSERT INTO form_input_api_config("form_input_id", "endpoint_url", "method", "cache_duration_seconds", "no_options_message")
-	VALUES($1, $2, $3, $4, $5)
+	INSERT INTO form_input_api_config("form_input_id", "endpoint_url", "method", "cache_duration_seconds", "no_options_message", "body_template")
+	VALUES($1, $2, $3, $4, $5, $6)
 	RETURNING "id";`
 
 	var id int
-	if err := f.QueryRow(ctx, query, formInputId, endpointUrl, method, cacheDurationSeconds, noOptionsMessage).Scan(&id); err != nil {
+	if err := f.QueryRow(ctx, query, formInputId, endpointUrl, method, cacheDurationSeconds, noOptionsMessage, bodyTemplate).Scan(&id); err != nil {
 		return 0, err
 	}
 
 	return id, nil
 }
 
-func (f *FormInputApiConfigTable) CreateTx(ctx context.Context, tx pgx.Tx, formInputId int, endpointUrl string, method string, cacheDurationSeconds *int, noOptionsMessage *string) (int, error) {
+func (f *FormInputApiConfigTable) CreateTx(ctx context.Context, tx pgx.Tx, formInputId int, endpointUrl string, method string, cacheDurationSeconds *int, noOptionsMessage *string, bodyTemplate *string) (int, error) {
 	query := `
-	INSERT INTO form_input_api_config("form_input_id", "endpoint_url", "method", "cache_duration_seconds", "no_options_message")
-	VALUES($1, $2, $3, $4, $5)
+	INSERT INTO form_input_api_config("form_input_id", "endpoint_url", "method", "cache_duration_seconds", "no_options_message", "body_template")
+	VALUES($1, $2, $3, $4, $5, $6)
 	RETURNING "id";`
 
 	var id int
-	if err := tx.QueryRow(ctx, query, formInputId, endpointUrl, method, cacheDurationSeconds, noOptionsMessage).Scan(&id); err != nil {
+	if err := tx.QueryRow(ctx, query, formInputId, endpointUrl, method, cacheDurationSeconds, noOptionsMessage, bodyTemplate).Scan(&id); err != nil {
 		return 0, err
 	}
 
 	return id, nil
 }
 
-func (f *FormInputApiConfigTable) Update(ctx context.Context, id int, endpointUrl string, method string, cacheDurationSeconds *int, noOptionsMessage *string) error {
+func (f *FormInputApiConfigTable) Update(ctx context.Context, id int, endpointUrl string, method string, cacheDurationSeconds *int, noOptionsMessage *string, bodyTemplate *string) error {
 	query := `
 	UPDATE form_input_api_config
 	SET "endpoint_url" = $2,
 		"method" = $3,
 		"cache_duration_seconds" = $4,
 		"no_options_message" = $5,
+		"body_template" = $6,
 		"updated_at" = CURRENT_TIMESTAMP
 	WHERE "id" = $1;`
 
-	_, err := f.Exec(ctx, query, id, endpointUrl, method, cacheDurationSeconds, noOptionsMessage)
+	_, err := f.Exec(ctx, query, id, endpointUrl, method, cacheDurationSeconds, noOptionsMessage, bodyTemplate)
 	return err
 }
 
-func (f *FormInputApiConfigTable) UpdateTx(ctx context.Context, tx pgx.Tx, id int, endpointUrl string, method string, cacheDurationSeconds *int, noOptionsMessage *string) error {
+func (f *FormInputApiConfigTable) UpdateTx(ctx context.Context, tx pgx.Tx, id int, endpointUrl string, method string, cacheDurationSeconds *int, noOptionsMessage *string, bodyTemplate *string) error {
 	query := `
 	UPDATE form_input_api_config
 	SET "endpoint_url" = $2,
 		"method" = $3,
 		"cache_duration_seconds" = $4,
 		"no_options_message" = $5,
+		"body_template" = $6,
 		"updated_at" = CURRENT_TIMESTAMP
 	WHERE "id" = $1;`
 
-	_, err := tx.Exec(ctx, query, id, endpointUrl, method, cacheDurationSeconds, noOptionsMessage)
+	_, err := tx.Exec(ctx, query, id, endpointUrl, method, cacheDurationSeconds, noOptionsMessage, bodyTemplate)
 	return err
 }
 
