@@ -156,6 +156,14 @@ const (
 	AuditActionFeatureFlagRulesUpdate AuditActionType = 442
 )
 
+type AuditCategory int16
+
+const (
+	AuditCategoryGuild AuditCategory = 1
+	AuditCategoryUser  AuditCategory = 2
+	AuditCategoryStaff AuditCategory = 3
+)
+
 type AuditResourceType int16
 
 const (
@@ -201,6 +209,7 @@ const (
 
 type AuditLogEntry struct {
 	Id           int64
+	Category     AuditCategory
 	GuildId      *uint64
 	UserId       uint64
 	ActionType   AuditActionType
@@ -213,6 +222,7 @@ type AuditLogEntry struct {
 }
 
 type AuditLogQueryOptions struct {
+	Category     *AuditCategory
 	GuildId      *uint64
 	UserId       *uint64
 	ActionType   *int16
@@ -237,6 +247,7 @@ func (t AuditLogTable) Schema() string {
 	return `
 CREATE TABLE IF NOT EXISTS audit_logs (
 	"id"            BIGSERIAL       PRIMARY KEY,
+	"category"      INT2            NOT NULL,
 	"guild_id"      INT8            DEFAULT NULL,
 	"user_id"       INT8            NOT NULL,
 	"action_type"   INT2            NOT NULL,
@@ -247,6 +258,8 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 	"metadata"      JSONB           DEFAULT NULL,
 	"created_at"    TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS "category" INT2;
+CREATE INDEX IF NOT EXISTS audit_logs_category_created_at_idx ON audit_logs("category", "created_at" DESC);
 CREATE INDEX IF NOT EXISTS audit_logs_guild_id_created_at_idx ON audit_logs("guild_id", "created_at" DESC);
 CREATE INDEX IF NOT EXISTS audit_logs_user_id_idx ON audit_logs("user_id");
 CREATE INDEX IF NOT EXISTS audit_logs_action_type_idx ON audit_logs("action_type");
@@ -257,10 +270,11 @@ CREATE INDEX IF NOT EXISTS audit_logs_created_at_idx ON audit_logs("created_at" 
 
 func (t *AuditLogTable) Insert(ctx context.Context, entry AuditLogEntry) error {
 	query := `
-INSERT INTO audit_logs ("guild_id", "user_id", "action_type", "resource_type", "resource_id", "old_data", "new_data", "metadata")
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`
+INSERT INTO audit_logs ("category", "guild_id", "user_id", "action_type", "resource_type", "resource_id", "old_data", "new_data", "metadata")
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`
 
 	_, err := t.Exec(ctx, query,
+		entry.Category,
 		entry.GuildId,
 		entry.UserId,
 		entry.ActionType,
@@ -274,7 +288,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`
 }
 
 func (t *AuditLogTable) Query(ctx context.Context, opts AuditLogQueryOptions) ([]AuditLogEntry, error) {
-	query, args := buildAuditLogQuery("SELECT \"id\", \"guild_id\", \"user_id\", \"action_type\", \"resource_type\", \"resource_id\", \"old_data\", \"new_data\", \"metadata\", \"created_at\" FROM audit_logs", opts)
+	query, args := buildAuditLogQuery("SELECT \"id\", COALESCE(\"category\", 0), \"guild_id\", \"user_id\", \"action_type\", \"resource_type\", \"resource_id\", \"old_data\", \"new_data\", \"metadata\", \"created_at\" FROM audit_logs", opts)
 	query += " ORDER BY \"created_at\" DESC"
 
 	if opts.Limit > 0 {
@@ -298,6 +312,7 @@ func (t *AuditLogTable) Query(ctx context.Context, opts AuditLogQueryOptions) ([
 		var entry AuditLogEntry
 		if err := rows.Scan(
 			&entry.Id,
+			&entry.Category,
 			&entry.GuildId,
 			&entry.UserId,
 			&entry.ActionType,
@@ -332,6 +347,11 @@ func (t *AuditLogTable) Count(ctx context.Context, opts AuditLogQueryOptions) (i
 func buildAuditLogQuery(base string, opts AuditLogQueryOptions) (string, []interface{}) {
 	var conditions []string
 	var args []interface{}
+
+	if opts.Category != nil {
+		args = append(args, *opts.Category)
+		conditions = append(conditions, fmt.Sprintf("\"category\" = $%d", len(args)))
+	}
 
 	if opts.GuildId != nil {
 		args = append(args, *opts.GuildId)
