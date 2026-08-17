@@ -153,6 +153,10 @@ const (
 	AuditActionFeatureFlagToggle      AuditActionType = 440
 	AuditActionFeatureFlagCreate      AuditActionType = 441
 	AuditActionFeatureFlagRulesUpdate AuditActionType = 442
+
+	AuditActionTicketContentView      AuditActionType = 450
+	AuditActionTranscriptContentView  AuditActionType = 451
+	AuditActionTicketContentSendBlock AuditActionType = 452
 )
 
 type AuditResourceType int16
