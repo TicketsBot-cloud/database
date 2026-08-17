@@ -90,9 +90,10 @@ const (
 	AuditActionWhitelabelStatusDelete       AuditActionType = 214
 	AuditActionWhitelabelResync             AuditActionType = 215
 
-	AuditActionBotStaffAdd        AuditActionType = 300
-	AuditActionBotStaffRemove     AuditActionType = 301
-	AuditActionBotStaffTierUpdate AuditActionType = 302
+	AuditActionBotStaffAdd              AuditActionType = 300
+	AuditActionBotStaffRemove           AuditActionType = 301
+	AuditActionBotStaffTierUpdate       AuditActionType = 302
+	AuditActionBotStaffGlobalViewUpdate AuditActionType = 303
 
 	AuditActionGlobalBlacklistAdd    AuditActionType = 310
 	AuditActionGlobalBlacklistRemove AuditActionType = 311
@@ -153,10 +154,6 @@ const (
 	AuditActionFeatureFlagToggle      AuditActionType = 440
 	AuditActionFeatureFlagCreate      AuditActionType = 441
 	AuditActionFeatureFlagRulesUpdate AuditActionType = 442
-
-	AuditActionTicketContentView      AuditActionType = 450
-	AuditActionTranscriptContentView  AuditActionType = 451
-	AuditActionTicketContentSendBlock AuditActionType = 452
 )
 
 type AuditResourceType int16
