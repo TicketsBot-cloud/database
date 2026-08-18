@@ -43,6 +43,7 @@ type TicketQueryOptions struct {
 	Rating            int       `json:"rating"`
 	LabelIds          []int     `json:"label_ids"`
 	CloseReasonSearch string    `json:"close_reason_search"`
+	SortBy            SortBy    `json:"sort_by"`
 	Order             OrderType `json:"order_type"`
 	Limit             int       `json:"limit"`
 	Offset            int       `json:"offset"`
@@ -54,6 +55,14 @@ const (
 	OrderTypeNone       OrderType = ""
 	OrderTypeAscending  OrderType = "ASC"
 	OrderTypeDescending OrderType = "DESC"
+)
+
+type SortBy string
+
+const (
+	SortByTicketId    SortBy = ""
+	SortByRating      SortBy = "rating"
+	SortByCloseReason SortBy = "close_reason"
 )
 
 func (o TicketQueryOptions) HasWhereClause() bool {
@@ -273,12 +282,12 @@ SELECT tickets.id,
 	tickets.status
 FROM tickets`
 
-	if o.Rating != 0 {
-		query += " INNER JOIN service_ratings ON tickets.guild_id = service_ratings.guild_id AND tickets.id = service_ratings.ticket_id "
+	if o.Rating != 0 || o.SortBy == SortByRating {
+		query += " LEFT JOIN service_ratings ON tickets.guild_id = service_ratings.guild_id AND tickets.id = service_ratings.ticket_id "
 	}
 
-	if o.ClosedById != 0 || o.CloseReasonSearch != "" {
-		query += " INNER JOIN close_reason ON tickets.guild_id = close_reason.guild_id AND tickets.id = close_reason.ticket_id "
+	if o.ClosedById != 0 || o.CloseReasonSearch != "" || o.SortBy == SortByCloseReason {
+		query += " LEFT JOIN close_reason ON tickets.guild_id = close_reason.guild_id AND tickets.id = close_reason.ticket_id "
 	}
 
 	if o.ClaimedById != 0 {
@@ -410,9 +419,17 @@ FROM tickets`
 		needsAnd = true
 	}
 
-	// Cannot use prepared statement for this value
+	// Cannot use prepared statements for these values; both are compared against constants first.
 	if o.Order == OrderTypeAscending || o.Order == OrderTypeDescending {
-		query += fmt.Sprintf(` ORDER BY "id" %s `, o.Order)
+		// tickets.id breaks ties so paging stays stable across the many equal sort values.
+		switch o.SortBy {
+		case SortByRating:
+			query += fmt.Sprintf(` ORDER BY service_ratings.rating %s NULLS LAST, tickets.id DESC `, o.Order)
+		case SortByCloseReason:
+			query += fmt.Sprintf(` ORDER BY close_reason.close_reason %s NULLS LAST, tickets.id DESC `, o.Order)
+		default:
+			query += fmt.Sprintf(` ORDER BY tickets."id" %s `, o.Order)
+		}
 	}
 
 	if o.Limit != 0 {
@@ -433,11 +450,11 @@ func (o TicketQueryOptions) BuildCountQuery() (query string, args []interface{},
 	query = "SELECT COUNT(*) FROM tickets"
 
 	if o.Rating != 0 {
-		query += " INNER JOIN service_ratings ON tickets.guild_id = service_ratings.guild_id AND tickets.id = service_ratings.ticket_id "
+		query += " LEFT JOIN service_ratings ON tickets.guild_id = service_ratings.guild_id AND tickets.id = service_ratings.ticket_id "
 	}
 
 	if o.ClosedById != 0 || o.CloseReasonSearch != "" {
-		query += " INNER JOIN close_reason ON tickets.guild_id = close_reason.guild_id AND tickets.id = close_reason.ticket_id "
+		query += " LEFT JOIN close_reason ON tickets.guild_id = close_reason.guild_id AND tickets.id = close_reason.ticket_id "
 	}
 
 	if o.ClaimedById != 0 {
