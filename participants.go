@@ -145,7 +145,9 @@ func (p *ParticipantTable) GetParticipatedCount(ctx context.Context, guildId, us
 	query := `
 SELECT COUNT(*)
 FROM participant
-WHERE "guild_id" = $1 AND "user_id" = $2;
+INNER JOIN tickets
+ON tickets.guild_id = participant.guild_id AND tickets.id = participant.ticket_id
+WHERE participant.guild_id = $1 AND participant.user_id = $2 AND participant.user_id != tickets.user_id;
 `
 
 	err = p.QueryRow(ctx, query, guildId, userId).Scan(&count)
@@ -163,7 +165,10 @@ SELECT COUNT(*)
 FROM participant
 INNER JOIN tickets
 ON tickets.guild_id = participant.guild_id AND tickets.id = participant.ticket_id
-WHERE participant.guild_id = $1 AND participant.user_id = $2 AND tickets.open_time > NOW() - $3::interval;
+WHERE participant.guild_id = $1
+  AND participant.user_id = $2
+  AND participant.user_id != tickets.user_id
+  AND tickets.open_time > NOW() - $3::interval;
 `
 
 	err = p.QueryRow(ctx, query, guildId, userId, parsed).Scan(&count)
