@@ -58,6 +58,16 @@ ON CONFLICT("panel_id") DO UPDATE SET
 	return
 }
 
+func (t *PanelAutoCloseTable) Reset(ctx context.Context, guildId uint64) (err error) {
+	query := `
+UPDATE panel_auto_close
+SET "since_open_with_no_response" = NULL, "since_last_message" = NULL
+WHERE "panel_id" IN (SELECT "panel_id" FROM panels WHERE "guild_id" = $1);`
+
+	_, err = t.Exec(ctx, query, guildId)
+	return
+}
+
 func (t *PanelAutoCloseTable) Delete(ctx context.Context, panelId int) (err error) {
 	_, err = t.Exec(ctx, `DELETE FROM panel_auto_close WHERE "panel_id" = $1;`, panelId)
 	return
