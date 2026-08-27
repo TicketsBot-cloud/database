@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
@@ -117,4 +118,148 @@ func (c *CloseMetadataTable) Delete(ctx context.Context, guildId uint64, ticketI
 	query := `DELETE FROM close_reason WHERE "guild_id"=$1 AND "ticket_id"=$2;`
 	_, err = c.Exec(ctx, query, guildId, ticketId)
 	return
+}
+
+func (c *CloseMetadataTable) GetTopCloseReasons(ctx context.Context, guildId uint64, panelId *int, limit int) ([]string, error) {
+	query := `
+SELECT cr.close_reason
+FROM close_reason cr
+INNER JOIN tickets t ON cr.guild_id = t.guild_id AND cr.ticket_id = t.id
+WHERE cr.guild_id = $1
+  AND ($2::int IS NULL OR t.panel_id = $2)
+  AND cr.close_reason IS NOT NULL
+  AND cr.close_reason != ''
+  AND cr.close_reason != 'Automatically closed due to inactivity'
+GROUP BY cr.close_reason
+ORDER BY COUNT(*) DESC
+LIMIT $3;`
+
+	rows, err := c.Query(ctx, query, guildId, panelId, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var reasons []string
+	for rows.Next() {
+		var reason string
+		if err := rows.Scan(&reason); err != nil {
+			return nil, err
+		}
+		reasons = append(reasons, reason)
+	}
+
+	return reasons, nil
+}
+
+type CloseReasonCount struct {
+	Reason string `json:"reason"`
+	Count  int    `json:"count"`
+}
+
+func (c *CloseMetadataTable) GetTopCloseReasonsWithCount(ctx context.Context, guildId uint64, panelId *int, limit, days int, caseInsensitive bool, filter *PanelFilter) ([]CloseReasonCount, error) {
+	reasonExpr := "cr.close_reason"
+	if caseInsensitive {
+		reasonExpr = "LOWER(cr.close_reason)"
+	}
+
+	query := `
+SELECT ` + reasonExpr + ` AS close_reason, COUNT(*)::int AS count
+FROM close_reason cr
+INNER JOIN tickets t ON cr.guild_id = t.guild_id AND cr.ticket_id = t.id
+WHERE cr.guild_id = $1
+  AND ($2::int IS NULL OR t.panel_id = $2)
+  AND cr.close_reason IS NOT NULL
+  AND cr.close_reason != ''
+  AND cr.close_reason != 'Automatically closed due to inactivity'
+  AND ($4 = 0 OR t.open_time > NOW() - make_interval(days => $4))` +
+		PanelPredicate("t", 5, 6) + `
+GROUP BY ` + reasonExpr + `
+ORDER BY COUNT(*) DESC
+LIMIT $3;`
+
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return nil, fmt.Errorf("top close reasons: %w", err)
+	}
+
+	rows, err := c.Query(ctx, query, guildId, panelId, limit, days, arr, unassigned)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []CloseReasonCount
+	for rows.Next() {
+		var r CloseReasonCount
+		if err := rows.Scan(&r.Reason, &r.Count); err != nil {
+			return nil, err
+		}
+		results = append(results, r)
+	}
+
+	return results, nil
+}
+
+// GetAutoCloseVsManualClose is the worker-compatible wrapper. Delegates to
+// GetAutoCloseVsManualCloseFiltered with no panel filter.
+func (c *CloseMetadataTable) GetAutoCloseVsManualClose(ctx context.Context, guildId uint64, nDays int) (AutoCloseStats, error) {
+	return c.GetAutoCloseVsManualCloseFiltered(ctx, guildId, nDays, nil)
+}
+
+func (c *CloseMetadataTable) GetAutoCloseVsManualCloseFiltered(ctx context.Context, guildId uint64, nDays int, filter *PanelFilter) (AutoCloseStats, error) {
+	query := `
+SELECT
+    COUNT(*) FILTER (WHERE cr.closed_by IS NULL),
+    COUNT(*) FILTER (WHERE cr.closed_by IS NOT NULL)
+FROM close_reason cr
+INNER JOIN tickets t ON cr.guild_id = t.guild_id AND cr.ticket_id = t.id
+WHERE cr.guild_id = $1 AND t.close_time > CURRENT_DATE - ($2 - 1) * INTERVAL '1 day'` +
+		PanelPredicate("t", 3, 4)
+
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return AutoCloseStats{}, fmt.Errorf("auto close stats: %w", err)
+	}
+
+	var stats AutoCloseStats
+	if err := c.QueryRow(ctx, query, guildId, nDays, arr, unassigned).Scan(&stats.AutoClosed, &stats.ManualClosed); err != nil {
+		return AutoCloseStats{}, err
+	}
+
+	return stats, nil
+}
+
+func (c *CloseMetadataTable) GetTopCloseReasonsContaining(ctx context.Context, guildId uint64, panelId *int, contains string, limit int) ([]string, error) {
+	query := `
+SELECT cr.close_reason
+FROM close_reason cr
+INNER JOIN tickets t ON cr.guild_id = t.guild_id AND cr.ticket_id = t.id
+WHERE cr.guild_id = $1
+  AND ($2::int IS NULL OR t.panel_id = $2)
+  AND cr.close_reason IS NOT NULL
+  AND cr.close_reason != ''
+  AND cr.close_reason != 'Automatically closed due to inactivity'
+  AND LOWER(cr.close_reason) LIKE '%' || LOWER($3) || '%'
+GROUP BY cr.close_reason
+ORDER BY CASE WHEN LOWER(cr.close_reason) LIKE LOWER($3) || '%' THEN 0 ELSE 1 END,
+         COUNT(*) DESC
+LIMIT $4;`
+
+	rows, err := c.Query(ctx, query, guildId, panelId, contains, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var reasons []string
+	for rows.Next() {
+		var reason string
+		if err := rows.Scan(&reason); err != nil {
+			return nil, err
+		}
+		reasons = append(reasons, reason)
+	}
+
+	return reasons, nil
 }

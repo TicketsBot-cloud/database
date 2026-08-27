@@ -49,6 +49,12 @@ var (
 
 	//go:embed sql/entitlements/update_expires_at.sql
 	entitlementsUpdateExpiresAt string
+
+	//go:embed sql/entitlements/list_all_user_subscriptions_paginated.sql
+	entitlementsListAllUserSubscriptionsPaginated string
+
+	//go:embed sql/entitlements/count_all_user_subscriptions.sql
+	entitlementsCountAllUserSubscriptions string
 )
 
 func newEntitlementsTable(db *pgxpool.Pool) *Entitlements {
@@ -262,4 +268,41 @@ func (e *Entitlements) IncreaseExpiry(ctx context.Context, tx pgx.Tx, guildId, u
 func (e *Entitlements) SetExpiresAt(ctx context.Context, tx pgx.Tx, id uuid.UUID, expiresAt *time.Time) error {
 	_, err := tx.Exec(ctx, entitlementsUpdateExpiresAt, id, expiresAt)
 	return err
+}
+
+func (e *Entitlements) ListAllUserSubscriptionsPaginated(ctx context.Context, gracePeriod time.Duration, limit, offset int) ([]model.GuildEntitlementEntry, error) {
+	rows, err := e.Query(ctx, entitlementsListAllUserSubscriptionsPaginated, gracePeriod, limit, offset)
+	if err != nil {
+		return nil, err
+	}
+
+	var entries []model.GuildEntitlementEntry
+	for rows.Next() {
+		var entry model.GuildEntitlementEntry
+		if err := rows.Scan(
+			&entry.Id,
+			&entry.UserId,
+			&entry.Source,
+			&entry.ExpiresAt,
+			&entry.SkuId,
+			&entry.SkuLabel,
+			&entry.Tier,
+			&entry.SkuPriority,
+		); err != nil {
+			return nil, err
+		}
+
+		entries = append(entries, entry)
+	}
+
+	return entries, nil
+}
+
+func (e *Entitlements) CountAllUserSubscriptions(ctx context.Context, gracePeriod time.Duration) (int, error) {
+	var count int
+	if err := e.QueryRow(ctx, entitlementsCountAllUserSubscriptions, gracePeriod).Scan(&count); err != nil {
+		return 0, err
+	}
+
+	return count, nil
 }

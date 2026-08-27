@@ -14,6 +14,7 @@ type Tag struct {
 	Content              *string
 	Embed                *CustomEmbedWithFields
 	ApplicationCommandId *uint64
+	KBArticleId          *int `json:"kb_article_id"`
 }
 
 type TagsTable struct {
@@ -38,6 +39,8 @@ CREATE TABLE IF NOT EXISTS tags(
 	PRIMARY KEY("guild_id", "tag_id")
 );
 CREATE INDEX IF NOT EXISTS tags_guild_id_idx ON tags("guild_id");
+
+ALTER TABLE tags ADD COLUMN IF NOT EXISTS "kb_article_id" int4 DEFAULT NULL;
 `
 }
 
@@ -49,7 +52,7 @@ func (t *TagsTable) Exists(ctx context.Context, guildId uint64, tagId string) (e
 
 func (t *TagsTable) Get(ctx context.Context, guildId uint64, tagId string) (Tag, bool, error) {
 	query := `
-SELECT LOWER(tag_id), "guild_id", "content", "embed", "application_command_id"
+SELECT LOWER(tag_id), "guild_id", "content", "embed", "application_command_id", "kb_article_id"
 FROM tags
 WHERE "guild_id" = $1 AND LOWER("tag_id") = LOWER($2);
 `
@@ -62,6 +65,7 @@ WHERE "guild_id" = $1 AND LOWER("tag_id") = LOWER($2);
 		&tag.Content,
 		&embedRaw,
 		&tag.ApplicationCommandId,
+		&tag.KBArticleId,
 	)
 
 	if err != nil {
@@ -105,14 +109,14 @@ func (t *TagsTable) GetTagIds(ctx context.Context, guildId uint64) (ids []string
 
 func (t *TagsTable) GetByApplicationCommandId(ctx context.Context, guildId, applicationCommandId uint64) (Tag, bool, error) {
 	query := `
-SELECT LOWER(tags.tag_id), tags.guild_id, tags.content, tags.embed, tags.application_command_id
+SELECT LOWER(tags.tag_id), tags.guild_id, tags.content, tags.embed, tags.application_command_id, tags.kb_article_id
 FROM tags
 WHERE "guild_id" = $1 AND "application_command_id" = $2;
 `
 
 	var tag Tag
 	var embedRaw *string
-	if err := t.QueryRow(ctx, query, guildId, applicationCommandId).Scan(&tag.Id, &tag.GuildId, &tag.Content, &embedRaw, &tag.ApplicationCommandId); err != nil {
+	if err := t.QueryRow(ctx, query, guildId, applicationCommandId).Scan(&tag.Id, &tag.GuildId, &tag.Content, &embedRaw, &tag.ApplicationCommandId, &tag.KBArticleId); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Tag{}, false, nil
 		}
@@ -131,7 +135,7 @@ WHERE "guild_id" = $1 AND "application_command_id" = $2;
 
 func (t *TagsTable) GetByGuild(ctx context.Context, guildId uint64) (map[string]Tag, error) {
 	query := `
-SELECT LOWER(tags.tag_id), tags.guild_id, tags.content, tags.embed, tags.application_command_id
+SELECT LOWER(tags.tag_id), tags.guild_id, tags.content, tags.embed, tags.application_command_id, tags.kb_article_id
 FROM tags
 WHERE "guild_id" = $1;`
 
@@ -146,7 +150,7 @@ WHERE "guild_id" = $1;`
 	for rows.Next() {
 		var tag Tag
 		var embedRaw *string
-		if err := rows.Scan(&tag.Id, &tag.GuildId, &tag.Content, &embedRaw, &tag.ApplicationCommandId); err != nil {
+		if err := rows.Scan(&tag.Id, &tag.GuildId, &tag.Content, &embedRaw, &tag.ApplicationCommandId, &tag.KBArticleId); err != nil {
 			return nil, err
 		}
 
@@ -216,10 +220,10 @@ func (t *TagsTable) GetStartingWith(ctx context.Context, guildId uint64, prefix 
 
 func (t *TagsTable) Set(ctx context.Context, tag Tag) error {
 	query := `
-INSERT INTO tags("tag_id", "guild_id", "content", "embed", "application_command_id")
-VALUES(LOWER($1), $2, $3, $4, $5)
+INSERT INTO tags("tag_id", "guild_id", "content", "embed", "application_command_id", "kb_article_id")
+VALUES(LOWER($1), $2, $3, $4, $5, $6)
 ON CONFLICT("tag_id", "guild_id") DO
-UPDATE SET "content" = $3, "embed" = $4, "application_command_id" = $5;`
+UPDATE SET "content" = $3, "embed" = $4, "application_command_id" = $5, "kb_article_id" = $6;`
 
 	var embedRaw *string
 	if tag.Embed != nil {
@@ -231,8 +235,43 @@ UPDATE SET "content" = $3, "embed" = $4, "application_command_id" = $5;`
 		embedRaw = &tmp
 	}
 
-	_, err := t.Exec(ctx, query, tag.Id, tag.GuildId, tag.Content, embedRaw, tag.ApplicationCommandId)
+	_, err := t.Exec(ctx, query, tag.Id, tag.GuildId, tag.Content, embedRaw, tag.ApplicationCommandId, tag.KBArticleId)
 	return err
+}
+
+func (t *TagsTable) GetByKBArticleId(ctx context.Context, guildId uint64, articleId int) (Tag, bool, error) {
+	query := `
+SELECT LOWER(tag_id), "guild_id", "content", "embed", "application_command_id", "kb_article_id"
+FROM tags
+WHERE "guild_id" = $1 AND "kb_article_id" = $2
+LIMIT 1;
+`
+
+	var tag Tag
+	var embedRaw *string
+	err := t.QueryRow(ctx, query, guildId, articleId).Scan(
+		&tag.Id,
+		&tag.GuildId,
+		&tag.Content,
+		&embedRaw,
+		&tag.ApplicationCommandId,
+		&tag.KBArticleId,
+	)
+
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			return Tag{}, false, nil
+		}
+		return Tag{}, false, err
+	}
+
+	if embedRaw != nil {
+		if err := json.UnmarshalFromString(*embedRaw, &tag.Embed); err != nil {
+			return Tag{}, false, err
+		}
+	}
+
+	return tag, true, nil
 }
 
 func (t *TagsTable) Delete(ctx context.Context, guildId uint64, tagId string) (err error) {

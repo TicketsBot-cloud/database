@@ -45,6 +45,26 @@ func (c *TicketClaims) Set(ctx context.Context, guildId uint64, ticketId int, us
 	return
 }
 
+// TryClaim atomically claims the ticket only if it is currently unclaimed. It returns
+// claimed=true if the claim was recorded, or claimed=false with the existing claimer if it
+// was already claimed by anyone.
+func (c *TicketClaims) TryClaim(ctx context.Context, guildId uint64, ticketId int, userId uint64) (claimed bool, claimer uint64, err error) {
+	query := `INSERT INTO ticket_claims("guild_id", "ticket_id", "user_id") VALUES($1, $2, $3) ON CONFLICT("guild_id", "ticket_id") DO NOTHING;`
+
+	tag, err := c.Exec(ctx, query, guildId, ticketId, userId)
+	if err != nil {
+		return false, 0, err
+	}
+
+	if tag.RowsAffected() > 0 {
+		return true, userId, nil
+	}
+
+	// Already claimed - return the current claimer
+	claimer, err = c.Get(ctx, guildId, ticketId)
+	return false, claimer, err
+}
+
 func (c *TicketClaims) Delete(ctx context.Context, guildId uint64, ticketId int) (err error) {
 	query := `DELETE FROM ticket_claims WHERE "guild_id"=$1 AND "ticket_id"=$2;`
 	_, err = c.Exec(ctx, query, guildId, ticketId)
@@ -69,6 +89,20 @@ WHERE ticket_claims.guild_id = $1 AND ticket_claims.user_id = $2 AND tickets.ope
 
 func (c *TicketClaims) GetClaimedCount(ctx context.Context, guildId, userId uint64) (count int, e error) {
 	query := `SELECT COUNT(*) FROM ticket_claims WHERE "guild_id" = $1 AND "user_id" = $2;`
+	if err := c.QueryRow(ctx, query, guildId, userId).Scan(&count); err != nil && err != pgx.ErrNoRows {
+		e = err
+	}
+
+	return
+}
+
+func (c *TicketClaims) GetOpenClaimedCount(ctx context.Context, guildId, userId uint64) (count int, e error) {
+	query := `
+SELECT COUNT(*)
+FROM ticket_claims
+INNER JOIN tickets ON ticket_claims.guild_id = tickets.guild_id AND ticket_claims.ticket_id = tickets.id
+WHERE ticket_claims.guild_id = $1 AND ticket_claims.user_id = $2 AND tickets.open = true;`
+
 	if err := c.QueryRow(ctx, query, guildId, userId).Scan(&count); err != nil && err != pgx.ErrNoRows {
 		e = err
 	}

@@ -56,6 +56,10 @@ const (
 	AuditActionTicketSendTag           AuditActionType = 91
 	AuditActionTicketClose             AuditActionType = 92
 	AuditActionTicketCloseReasonUpdate AuditActionType = 93
+	AuditActionTicketCloseRequest      AuditActionType = 94
+	AuditActionTicketClaim             AuditActionType = 95
+	AuditActionTicketUnclaim           AuditActionType = 96
+	AuditActionTicketTransfer          AuditActionType = 97
 
 	AuditActionGuildIntegrationActivate   AuditActionType = 100
 	AuditActionGuildIntegrationUpdate     AuditActionType = 101
@@ -75,15 +79,89 @@ const (
 	AuditActionUserIntegrationUpdate    AuditActionType = 201
 	AuditActionUserIntegrationDelete    AuditActionType = 202
 	AuditActionUserIntegrationSetPublic AuditActionType = 203
+	AuditActionUserIntegrationApprove   AuditActionType = 204
+	AuditActionUserIntegrationReject    AuditActionType = 205
+	AuditActionUserIntegrationUnapprove AuditActionType = 206
 
 	AuditActionWhitelabelCreate             AuditActionType = 210
 	AuditActionWhitelabelDelete             AuditActionType = 211
 	AuditActionWhitelabelCreateInteractions AuditActionType = 212
 	AuditActionWhitelabelStatusSet          AuditActionType = 213
 	AuditActionWhitelabelStatusDelete       AuditActionType = 214
+	AuditActionWhitelabelResync             AuditActionType = 215
 
-	AuditActionBotStaffAdd    AuditActionType = 300
-	AuditActionBotStaffRemove AuditActionType = 301
+	AuditActionBotStaffAdd              AuditActionType = 300
+	AuditActionBotStaffRemove           AuditActionType = 301
+	AuditActionBotStaffTierUpdate       AuditActionType = 302
+	AuditActionBotStaffGlobalViewUpdate AuditActionType = 303
+
+	AuditActionGlobalBlacklistAdd    AuditActionType = 310
+	AuditActionGlobalBlacklistRemove AuditActionType = 311
+
+	AuditActionServerBlacklistAdd    AuditActionType = 320
+	AuditActionServerBlacklistRemove AuditActionType = 321
+
+	AuditActionPremiumKeyGenerate AuditActionType = 330
+
+	AuditActionPolarCheckoutCreate     AuditActionType = 340
+	AuditActionPolarSubscriptionCancel AuditActionType = 341
+	AuditActionPolarSubscriptionChange AuditActionType = 342
+
+	AuditActionPolarProductCreate AuditActionType = 350
+	AuditActionPolarProductUpdate AuditActionType = 351
+	AuditActionPolarProductDelete AuditActionType = 352
+
+	AuditActionSkuCreate AuditActionType = 360
+	AuditActionSkuUpdate AuditActionType = 361
+	AuditActionSkuDelete AuditActionType = 362
+
+	AuditActionKBArticleCreate  AuditActionType = 370
+	AuditActionKBArticleUpdate  AuditActionType = 371
+	AuditActionKBArticleDelete  AuditActionType = 372
+	AuditActionKBCategoryCreate AuditActionType = 380
+	AuditActionKBCategoryUpdate AuditActionType = 381
+	AuditActionKBCategoryDelete AuditActionType = 382
+
+	AuditActionKBSettingsUpdate AuditActionType = 390
+
+	AuditActionGallerySubmit  AuditActionType = 400
+	AuditActionGalleryApprove AuditActionType = 401
+	AuditActionGalleryReject  AuditActionType = 402
+	AuditActionGalleryRemove  AuditActionType = 403
+	AuditActionGalleryImport  AuditActionType = 404
+
+	AuditActionOnboardingComplete AuditActionType = 410
+	AuditActionOnboardingSkip     AuditActionType = 411
+
+	AuditActionAffiliateApply      AuditActionType = 420
+	AuditActionAffiliateApprove    AuditActionType = 421
+	AuditActionAffiliateRevoke     AuditActionType = 422
+	AuditActionAffiliateCreate     AuditActionType = 423
+	AuditActionAffiliateRedeem     AuditActionType = 424
+	AuditActionAffiliateVoid       AuditActionType = 425
+	AuditActionAffiliateUpdateRate AuditActionType = 426
+	AuditActionAffiliateUpdateCode AuditActionType = 427
+
+	AuditActionNotificationPreferencesUpdate AuditActionType = 430
+	AuditActionUserEmailUpdate               AuditActionType = 431
+	AuditActionUserEmailDelete               AuditActionType = 432
+	AuditActionNotificationMarkRead          AuditActionType = 433
+	AuditActionNotificationMarkAllRead       AuditActionType = 434
+
+	AuditActionEmailVerify             AuditActionType = 435
+	AuditActionEmailResendVerification AuditActionType = 436
+
+	AuditActionFeatureFlagToggle      AuditActionType = 440
+	AuditActionFeatureFlagCreate      AuditActionType = 441
+	AuditActionFeatureFlagRulesUpdate AuditActionType = 442
+)
+
+type AuditCategory int16
+
+const (
+	AuditCategoryGuild AuditCategory = 1
+	AuditCategoryUser  AuditCategory = 2
+	AuditCategoryStaff AuditCategory = 3
 )
 
 type AuditResourceType int16
@@ -109,10 +187,29 @@ const (
 	AuditResourceBotStaff              AuditResourceType = 18
 	AuditResourceTicketLabel           AuditResourceType = 19
 	AuditResourceTicketLabelAssignment AuditResourceType = 20
+	AuditResourceGlobalBlacklist       AuditResourceType = 21
+	AuditResourceServerBlacklist       AuditResourceType = 22
+	AuditResourcePremiumKey            AuditResourceType = 23
+	AuditResourcePolarSubscription     AuditResourceType = 24
+	AuditResourcePolarProduct          AuditResourceType = 25
+	AuditResourceSku                   AuditResourceType = 26
+	AuditResourceKBArticle             AuditResourceType = 27
+	AuditResourceKBCategory            AuditResourceType = 28
+	AuditResourceKBSettings            AuditResourceType = 29
+	AuditResourceGalleryListing        AuditResourceType = 30
+	AuditResourceOnboarding            AuditResourceType = 31
+	AuditResourceAffiliate             AuditResourceType = 32
+	AuditResourceAffiliateReferral     AuditResourceType = 33
+	AuditResourceNotificationPrefs     AuditResourceType = 34
+	AuditResourceUserEmail             AuditResourceType = 35
+	AuditResourceNotification          AuditResourceType = 36
+	AuditResourceUserEmailVerification AuditResourceType = 37
+	AuditResourceFeatureFlag           AuditResourceType = 38
 )
 
 type AuditLogEntry struct {
 	Id           int64
+	Category     AuditCategory
 	GuildId      *uint64
 	UserId       uint64
 	ActionType   AuditActionType
@@ -125,6 +222,7 @@ type AuditLogEntry struct {
 }
 
 type AuditLogQueryOptions struct {
+	Category     *AuditCategory
 	GuildId      *uint64
 	UserId       *uint64
 	ActionType   *int16
@@ -149,6 +247,7 @@ func (t AuditLogTable) Schema() string {
 	return `
 CREATE TABLE IF NOT EXISTS audit_logs (
 	"id"            BIGSERIAL       PRIMARY KEY,
+	"category"      INT2            NOT NULL,
 	"guild_id"      INT8            DEFAULT NULL,
 	"user_id"       INT8            NOT NULL,
 	"action_type"   INT2            NOT NULL,
@@ -159,6 +258,8 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 	"metadata"      JSONB           DEFAULT NULL,
 	"created_at"    TIMESTAMPTZ     NOT NULL DEFAULT NOW()
 );
+ALTER TABLE audit_logs ADD COLUMN IF NOT EXISTS "category" INT2;
+CREATE INDEX IF NOT EXISTS audit_logs_category_created_at_idx ON audit_logs("category", "created_at" DESC);
 CREATE INDEX IF NOT EXISTS audit_logs_guild_id_created_at_idx ON audit_logs("guild_id", "created_at" DESC);
 CREATE INDEX IF NOT EXISTS audit_logs_user_id_idx ON audit_logs("user_id");
 CREATE INDEX IF NOT EXISTS audit_logs_action_type_idx ON audit_logs("action_type");
@@ -169,10 +270,11 @@ CREATE INDEX IF NOT EXISTS audit_logs_created_at_idx ON audit_logs("created_at" 
 
 func (t *AuditLogTable) Insert(ctx context.Context, entry AuditLogEntry) error {
 	query := `
-INSERT INTO audit_logs ("guild_id", "user_id", "action_type", "resource_type", "resource_id", "old_data", "new_data", "metadata")
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`
+INSERT INTO audit_logs ("category", "guild_id", "user_id", "action_type", "resource_type", "resource_id", "old_data", "new_data", "metadata")
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9);`
 
 	_, err := t.Exec(ctx, query,
+		entry.Category,
 		entry.GuildId,
 		entry.UserId,
 		entry.ActionType,
@@ -186,7 +288,7 @@ VALUES ($1, $2, $3, $4, $5, $6, $7, $8);`
 }
 
 func (t *AuditLogTable) Query(ctx context.Context, opts AuditLogQueryOptions) ([]AuditLogEntry, error) {
-	query, args := buildAuditLogQuery("SELECT \"id\", \"guild_id\", \"user_id\", \"action_type\", \"resource_type\", \"resource_id\", \"old_data\", \"new_data\", \"metadata\", \"created_at\" FROM audit_logs", opts)
+	query, args := buildAuditLogQuery("SELECT \"id\", COALESCE(\"category\", 0), \"guild_id\", \"user_id\", \"action_type\", \"resource_type\", \"resource_id\", \"old_data\", \"new_data\", \"metadata\", \"created_at\" FROM audit_logs", opts)
 	query += " ORDER BY \"created_at\" DESC"
 
 	if opts.Limit > 0 {
@@ -210,6 +312,7 @@ func (t *AuditLogTable) Query(ctx context.Context, opts AuditLogQueryOptions) ([
 		var entry AuditLogEntry
 		if err := rows.Scan(
 			&entry.Id,
+			&entry.Category,
 			&entry.GuildId,
 			&entry.UserId,
 			&entry.ActionType,
@@ -244,6 +347,11 @@ func (t *AuditLogTable) Count(ctx context.Context, opts AuditLogQueryOptions) (i
 func buildAuditLogQuery(base string, opts AuditLogQueryOptions) (string, []interface{}) {
 	var conditions []string
 	var args []interface{}
+
+	if opts.Category != nil {
+		args = append(args, *opts.Category)
+		conditions = append(conditions, fmt.Sprintf("\"category\" = $%d", len(args)))
+	}
 
 	if opts.GuildId != nil {
 		args = append(args, *opts.GuildId)

@@ -7,6 +7,16 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
+type TicketPermissions struct {
+	AddReactions        bool `json:"add_reactions"`
+	SendTTSMessages     bool `json:"send_tts_messages"`
+	EmbedLinks          bool `json:"embed_links"`
+	AttachFiles         bool `json:"attach_files"`
+	UseExternalEmojis   bool `json:"use_external_emojis"`
+	UseExternalStickers bool `json:"use_external_stickers"`
+	SendVoiceMessages   bool `json:"send_voice_messages"`
+}
+
 type PanelTicketPermissionsTable struct {
 	*pgxpool.Pool
 }

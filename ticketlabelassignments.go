@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4/pgxpool"
@@ -139,4 +140,38 @@ func (t *TicketLabelAssignmentsTable) Replace(ctx context.Context, guildId uint6
 	}
 
 	return tx.Commit(ctx)
+}
+
+func (t *TicketLabelAssignmentsTable) GetTicketCountByLabel(ctx context.Context, guildId uint64, nDays int, filter *PanelFilter) ([]LabelTicketCount, error) {
+	query := `
+SELECT tla.label_id, tl.name, tl.colour, COUNT(*)
+FROM ticket_label_assignments tla
+INNER JOIN ticket_labels tl ON tla.guild_id = tl.guild_id AND tla.label_id = tl.label_id
+INNER JOIN tickets t ON tla.guild_id = t.guild_id AND tla.ticket_id = t.id
+WHERE tla.guild_id = $1 AND t.open_time > CURRENT_DATE - ($2 - 1) * INTERVAL '1 day'` +
+		PanelPredicate("t", 3, 4) + `
+GROUP BY tla.label_id, tl.name, tl.colour
+ORDER BY COUNT(*) DESC;`
+
+	arr, unassigned, err := filter.Args()
+	if err != nil {
+		return nil, fmt.Errorf("ticket count by label: %w", err)
+	}
+
+	rows, err := t.Query(ctx, query, guildId, nDays, arr, unassigned)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []LabelTicketCount
+	for rows.Next() {
+		var r LabelTicketCount
+		if err := rows.Scan(&r.LabelId, &r.Name, &r.Colour, &r.Count); err != nil {
+			return nil, err
+		}
+		results = append(results, r)
+	}
+
+	return results, nil
 }

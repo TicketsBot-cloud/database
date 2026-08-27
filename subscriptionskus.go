@@ -24,6 +24,12 @@ var (
 
 	//go:embed sql/subscription_skus/search.sql
 	subscriptionSkusSearch string
+
+	//go:embed sql/subscription_skus/insert.sql
+	subscriptionSkusInsert string
+
+	//go:embed sql/subscription_skus/delete.sql
+	subscriptionSkusDelete string
 )
 
 func newSubscriptionSkusTable(db *pgxpool.Pool) *SubscriptionSkus {
@@ -54,6 +60,18 @@ func (e *SubscriptionSkus) GetSku(ctx context.Context, tx pgx.Tx, skuId uuid.UUI
 	}
 
 	return &sku, nil
+}
+
+// Upsert inserts or updates a subscription SKU entry within a transaction.
+func (e *SubscriptionSkus) Upsert(ctx context.Context, tx pgx.Tx, skuId uuid.UUID, tier model.EntitlementTier, priority int32, isGlobal bool) error {
+	_, err := tx.Exec(ctx, subscriptionSkusInsert, skuId, tier, priority, isGlobal)
+	return err
+}
+
+// DeleteBySku removes a subscription SKU entry by its SKU ID within a transaction.
+func (e *SubscriptionSkus) DeleteBySku(ctx context.Context, tx pgx.Tx, skuId uuid.UUID) error {
+	_, err := tx.Exec(ctx, subscriptionSkusDelete, skuId)
+	return err
 }
 
 func (e *SubscriptionSkus) Search(ctx context.Context, label string, limit int) ([]model.SubscriptionSku, error) {

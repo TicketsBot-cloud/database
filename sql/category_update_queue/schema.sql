@@ -1,4 +1,9 @@
-CREATE TYPE ticket_status AS ENUM ('OPEN', 'PENDING', 'CLOSED');
+DO $$
+BEGIN
+    CREATE TYPE ticket_status AS ENUM ('OPEN', 'PENDING', 'CLOSED');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS category_update_queue (
     guild_id INT8 NOT NULL,

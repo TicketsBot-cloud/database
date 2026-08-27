@@ -8,38 +8,48 @@ import (
 )
 
 type Panel struct {
-	PanelId                   int     `json:"panel_id"`
-	MessageId                 uint64  `json:"message_id,string"`
-	ChannelId                 uint64  `json:"channel_id,string"`
-	GuildId                   uint64  `json:"guild_id,string"`
-	Title                     string  `json:"title"`
-	Content                   string  `json:"content"`
-	Colour                    int32   `json:"colour"`
-	TargetCategory            uint64  `json:"category_id,string"`
-	EmojiName                 *string `json:"emoji_name"`
-	EmojiId                   *uint64 `json:"emoji_id,string"`
-	WelcomeMessageEmbed       *int    `json:"welcome_message_embed"`
-	WithDefaultTeam           bool    `json:"default_team"`
-	CustomId                  string  `json:"custom_id"`
-	ImageUrl                  *string `json:"image_url,omitempty"`
-	ThumbnailUrl              *string `json:"thumbnail_url,omitempty"`
-	ButtonStyle               int     `json:"button_style"`
-	ButtonLabel               string  `json:"button_label"`
-	FormId                    *int    `json:"form_id"`
-	NamingScheme              *string `json:"naming_scheme"`
-	ForceDisabled             bool    `json:"force_disabled"`
-	Disabled                  bool    `json:"disabled"`
-	ExitSurveyFormId          *int    `json:"exit_survey_form_id"`
-	PendingCategory           *uint64 `json:"pending_category,string"`
-	DeleteMentions            bool    `json:"delete_mentions"`
-	TranscriptChannelId       *uint64 `json:"transcript_channel_id,string,omitempty"`
-	UseThreads                bool    `json:"use_threads"`
-	TicketNotificationChannel *uint64 `json:"ticket_notification_channel,string,omitempty"`
-	CooldownSeconds           int     `json:"cooldown_seconds"`
-	TicketLimit               *uint8  `json:"ticket_limit,omitempty"`
-	HideCloseButton           bool    `json:"hide_close_button"`
-	HideCloseWithReasonButton bool    `json:"hide_close_with_reason_button"`
-	HideClaimButton           bool    `json:"hide_claim_button"`
+	PanelId                        int     `json:"panel_id"`
+	MessageId                      uint64  `json:"message_id,string"`
+	ChannelId                      uint64  `json:"channel_id,string"`
+	GuildId                        uint64  `json:"guild_id,string"`
+	Title                          string  `json:"title"`
+	Content                        string  `json:"content"`
+	Colour                         int32   `json:"colour"`
+	TargetCategory                 uint64  `json:"category_id,string"`
+	EmojiName                      *string `json:"emoji_name"`
+	EmojiId                        *uint64 `json:"emoji_id,string"`
+	EmojiAnimated                  bool    `json:"emoji_animated"`
+	WelcomeMessageEmbed            *int    `json:"welcome_message_embed"`
+	WithDefaultTeam                bool    `json:"default_team"`
+	CustomId                       string  `json:"custom_id"`
+	ImageUrl                       *string `json:"image_url,omitempty"`
+	ThumbnailUrl                   *string `json:"thumbnail_url,omitempty"`
+	ButtonStyle                    int     `json:"button_style,string"`
+	ButtonLabel                    string  `json:"button_label"`
+	FormId                         *int    `json:"form_id"`
+	NamingScheme                   *string `json:"naming_scheme"`
+	ForceDisabled                  bool    `json:"force_disabled"`
+	Disabled                       bool    `json:"disabled"`
+	ExitSurveyFormId               *int    `json:"exit_survey_form_id"`
+	PendingCategory                *uint64 `json:"pending_category,string"`
+	MentionBehaviour               string  `json:"mention_behaviour"`
+	TranscriptChannelId            *uint64 `json:"transcript_channel_id,string,omitempty"`
+	UseThreads                     bool    `json:"use_threads"`
+	TicketNotificationChannel      *uint64 `json:"ticket_notification_channel,string,omitempty"`
+	CooldownSeconds                int     `json:"cooldown_seconds"`
+	TicketLimit                    *uint8  `json:"ticket_limit,omitempty"`
+	HideCloseButton                bool    `json:"hide_close_button"`
+	HideCloseWithReasonButton      bool    `json:"hide_close_with_reason_button"`
+	HideClaimButton                bool    `json:"hide_claim_button"`
+	ShowInOpenCommand              bool    `json:"show_in_open_command"`
+	StoreTranscripts               bool    `json:"store_transcripts"`
+	OverflowEnabled                bool    `json:"overflow_enabled"`
+	OverflowCategoryId             *uint64 `json:"overflow_category_id,string"`
+	UsersCanClose                  bool    `json:"users_can_close"`
+	CloseConfirmation              bool    `json:"close_confirmation"`
+	FeedbackEnabled                bool    `json:"feedback_enabled"`
+	SupportCanView                 bool    `json:"support_can_view"`
+	SupportCanType                 bool    `json:"support_can_type"`
 }
 
 type PanelWithWelcomeMessage struct {
@@ -71,6 +81,7 @@ CREATE TABLE IF NOT EXISTS panels(
 	"target_category" int8 NOT NULL,
 	"emoji_name" varchar(32) DEFAULT NULL,
 	"emoji_id" int8 DEFAULT NULL,
+	"emoji_animated" bool NOT NULL DEFAULT false,
 	"welcome_message" int NULL,
 	"default_team" bool NOT NULL,
 	"custom_id" varchar(100) NOT NULL,
@@ -84,7 +95,7 @@ CREATE TABLE IF NOT EXISTS panels(
 	"disabled" bool NOT NULL DEFAULT false,
 	"exit_survey_form_id" int DEFAULT NULL,
 	"pending_category" int8 DEFAULT NULL,
-	"delete_mentions" bool NOT NULL DEFAULT false,
+	"mention_behaviour" varchar(20) NOT NULL DEFAULT 'none',
 	"transcript_channel_id" int8 DEFAULT NULL,
 	"use_threads" bool NOT NULL DEFAULT false,
 	"ticket_notification_channel" int8 DEFAULT NULL,
@@ -93,6 +104,15 @@ CREATE TABLE IF NOT EXISTS panels(
 	"hide_close_button" bool NOT NULL DEFAULT false,
 	"hide_close_with_reason_button" bool NOT NULL DEFAULT false,
 	"hide_claim_button" bool NOT NULL DEFAULT false,
+	"show_in_open_command" bool NOT NULL DEFAULT false,
+	"store_transcripts" bool NOT NULL DEFAULT true,
+	"overflow_enabled" bool NOT NULL DEFAULT false,
+	"overflow_category_id" int8 DEFAULT NULL,
+	"users_can_close" bool NOT NULL DEFAULT true,
+	"close_confirmation" bool NOT NULL DEFAULT true,
+	"feedback_enabled" bool NOT NULL DEFAULT false,
+	"support_can_view" bool NOT NULL DEFAULT true,
+	"support_can_type" bool NOT NULL DEFAULT false,
 	FOREIGN KEY ("welcome_message") REFERENCES embeds("id") ON DELETE SET NULL,
 	FOREIGN KEY ("form_id") REFERENCES forms("form_id"),
 	FOREIGN KEY ("exit_survey_form_id") REFERENCES forms("form_id"),
@@ -118,6 +138,7 @@ SELECT
 	target_category,
 	emoji_name,
 	emoji_id,
+	emoji_animated,
 	welcome_message,
 	default_team,
 	custom_id,
@@ -131,7 +152,7 @@ SELECT
 	disabled,
 	exit_survey_form_id,
 	pending_category,
-	delete_mentions,
+	mention_behaviour,
 	transcript_channel_id,
 	use_threads,
 	ticket_notification_channel,
@@ -139,7 +160,16 @@ SELECT
 	ticket_limit,
 	hide_close_button,
 	hide_close_with_reason_button,
-	hide_claim_button
+	hide_claim_button,
+	show_in_open_command,
+	store_transcripts,
+	overflow_enabled,
+	overflow_category_id,
+	users_can_close,
+	close_confirmation,
+	feedback_enabled,
+	support_can_view,
+	support_can_type
 FROM panels
 WHERE "message_id" = $1;
 `
@@ -165,6 +195,7 @@ SELECT
 	target_category,
 	emoji_name,
 	emoji_id,
+	emoji_animated,
 	welcome_message,
 	default_team,
 	custom_id,
@@ -178,7 +209,7 @@ SELECT
 	disabled,
 	exit_survey_form_id,
 	pending_category,
-	delete_mentions,
+	mention_behaviour,
 	transcript_channel_id,
 	use_threads,
 	ticket_notification_channel,
@@ -186,7 +217,16 @@ SELECT
 	ticket_limit,
 	hide_close_button,
 	hide_close_with_reason_button,
-	hide_claim_button
+	hide_claim_button,
+	show_in_open_command,
+	store_transcripts,
+	overflow_enabled,
+	overflow_category_id,
+	users_can_close,
+	close_confirmation,
+	feedback_enabled,
+	support_can_view,
+	support_can_type
 FROM panels
 WHERE "panel_id" = $1;
 `
@@ -212,6 +252,7 @@ SELECT
 	panels.target_category,
 	panels.emoji_name,
 	panels.emoji_id,
+	panels.emoji_animated,
 	panels.welcome_message,
 	panels.default_team,
 	panels.custom_id,
@@ -225,7 +266,7 @@ SELECT
 	panels.disabled,
 	panels.exit_survey_form_id,
 	panels.pending_category,
-	panels.delete_mentions,
+	panels.mention_behaviour,
 	panels.transcript_channel_id,
 	panels.use_threads,
 	panels.ticket_notification_channel,
@@ -234,6 +275,15 @@ SELECT
 	panels.hide_close_button,
 	panels.hide_close_with_reason_button,
 	panels.hide_claim_button,
+	panels.show_in_open_command,
+	panels.store_transcripts,
+	panels.overflow_enabled,
+	panels.overflow_category_id,
+	panels.users_can_close,
+	panels.close_confirmation,
+	panels.feedback_enabled,
+	panels.support_can_view,
+	panels.support_can_type,
 	embeds.id,
 	embeds.guild_id,
 	embeds.title,
@@ -321,6 +371,7 @@ SELECT
 	target_category,
 	emoji_name,
 	emoji_id,
+	emoji_animated,
 	welcome_message,
 	default_team,
 	custom_id,
@@ -334,7 +385,7 @@ SELECT
 	disabled,
 	exit_survey_form_id,
 	pending_category,
-	delete_mentions,
+	mention_behaviour,
 	transcript_channel_id,
 	use_threads,
 	ticket_notification_channel,
@@ -342,7 +393,16 @@ SELECT
 	ticket_limit,
 	hide_close_button,
 	hide_close_with_reason_button,
-	hide_claim_button
+	hide_claim_button,
+	show_in_open_command,
+	store_transcripts,
+	overflow_enabled,
+	overflow_category_id,
+	users_can_close,
+	close_confirmation,
+	feedback_enabled,
+	support_can_view,
+	support_can_type
 FROM panels
 WHERE "guild_id" = $1 AND "custom_id" = $2;
 `
@@ -371,6 +431,7 @@ SELECT
 	target_category,
 	emoji_name,
 	emoji_id,
+	emoji_animated,
 	welcome_message,
 	default_team,
 	custom_id,
@@ -384,7 +445,7 @@ SELECT
 	disabled,
 	exit_survey_form_id,
 	pending_category,
-	delete_mentions,
+	mention_behaviour,
 	transcript_channel_id,
 	use_threads,
 	ticket_notification_channel,
@@ -392,7 +453,16 @@ SELECT
 	ticket_limit,
 	hide_close_button,
 	hide_close_with_reason_button,
-	hide_claim_button
+	hide_claim_button,
+	show_in_open_command,
+	store_transcripts,
+	overflow_enabled,
+	overflow_category_id,
+	users_can_close,
+	close_confirmation,
+	feedback_enabled,
+	support_can_view,
+	support_can_type
 FROM panels
 WHERE "guild_id" = $1 AND "form_id" = $2;
 `
@@ -421,6 +491,7 @@ SELECT
 	panels.target_category,
 	panels.emoji_name,
 	panels.emoji_id,
+	panels.emoji_animated,
 	panels.welcome_message,
 	panels.default_team,
 	panels.custom_id,
@@ -434,7 +505,7 @@ SELECT
 	panels.disabled,
 	panels.exit_survey_form_id,
 	panels.pending_category,
-	panels.delete_mentions,
+	panels.mention_behaviour,
 	panels.transcript_channel_id,
 	panels.use_threads,
 	panels.ticket_notification_channel,
@@ -443,10 +514,19 @@ SELECT
 	panels.hide_close_button,
 	panels.hide_close_with_reason_button,
 	panels.hide_claim_button,
+	panels.show_in_open_command,
+	panels.store_transcripts,
+	panels.overflow_enabled,
+	panels.overflow_category_id,
+	panels.users_can_close,
+	panels.close_confirmation,
+	panels.feedback_enabled,
+	panels.support_can_view,
+	panels.support_can_type
 FROM panels
 INNER JOIN forms
 ON forms.form_id = panels.form_id
-WHERE forms.guild_id = $1 AND forms.form_id = $2;
+WHERE forms.guild_id = $1 AND forms.custom_id = $2;
 `
 
 	switch err := p.QueryRow(ctx, query, guildId, customId).Scan(panel.fieldPtrs()...); err {
@@ -473,6 +553,7 @@ SELECT
 	target_category,
 	emoji_name,
 	emoji_id,
+	emoji_animated,
 	welcome_message,
 	default_team,
 	custom_id,
@@ -486,7 +567,7 @@ SELECT
 	disabled,
 	exit_survey_form_id,
 	pending_category,
-	delete_mentions,
+	mention_behaviour,
 	transcript_channel_id,
 	use_threads,
 	ticket_notification_channel,
@@ -494,7 +575,16 @@ SELECT
 	ticket_limit,
 	hide_close_button,
 	hide_close_with_reason_button,
-	hide_claim_button
+	hide_claim_button,
+	show_in_open_command,
+	store_transcripts,
+	overflow_enabled,
+	overflow_category_id,
+	users_can_close,
+	close_confirmation,
+	feedback_enabled,
+	support_can_view,
+	support_can_type
 FROM panels
 WHERE "guild_id" = $1
 ORDER BY "panel_id" ASC;`
@@ -530,6 +620,7 @@ SELECT
 	panels.target_category,
 	panels.emoji_name,
 	panels.emoji_id,
+	panels.emoji_animated,
 	panels.welcome_message,
 	panels.default_team,
 	panels.custom_id,
@@ -543,7 +634,7 @@ SELECT
 	panels.disabled,
 	panels.exit_survey_form_id,
 	panels.pending_category,
-	panels.delete_mentions,
+	panels.mention_behaviour,
 	panels.transcript_channel_id,
 	panels.use_threads,
 	panels.ticket_notification_channel,
@@ -552,6 +643,15 @@ SELECT
 	panels.hide_close_button,
 	panels.hide_close_with_reason_button,
 	panels.hide_claim_button,
+	panels.show_in_open_command,
+	panels.store_transcripts,
+	panels.overflow_enabled,
+	panels.overflow_category_id,
+	panels.users_can_close,
+	panels.close_confirmation,
+	panels.feedback_enabled,
+	panels.support_can_view,
+	panels.support_can_type,
 	embeds.id,
 	embeds.guild_id,
 	embeds.title,
@@ -656,6 +756,7 @@ INSERT INTO panels(
 	"target_category",
 	"emoji_name",
 	"emoji_id",
+	"emoji_animated",
 	"welcome_message",
 	"default_team",
 	"custom_id",
@@ -669,7 +770,7 @@ INSERT INTO panels(
 	"disabled",
     "exit_survey_form_id",
 	"pending_category",
-	"delete_mentions",
+	"mention_behaviour",
 	"transcript_channel_id",
 	"use_threads",
 	"ticket_notification_channel",
@@ -677,9 +778,18 @@ INSERT INTO panels(
 	"ticket_limit",
 	"hide_close_button",
 	"hide_close_with_reason_button",
-	"hide_claim_button"
+	"hide_claim_button",
+	"show_in_open_command",
+	"store_transcripts",
+	"overflow_enabled",
+	"overflow_category_id",
+	"users_can_close",
+	"close_confirmation",
+	"feedback_enabled",
+	"support_can_view",
+	"support_can_type"
 )
-VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31)
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41)
 ON CONFLICT("message_id") DO NOTHING
 RETURNING "panel_id";`
 
@@ -693,6 +803,7 @@ RETURNING "panel_id";`
 		panel.TargetCategory,
 		panel.EmojiName,
 		panel.EmojiId,
+		panel.EmojiAnimated,
 		panel.WelcomeMessageEmbed,
 		panel.WithDefaultTeam,
 		panel.CustomId,
@@ -706,7 +817,7 @@ RETURNING "panel_id";`
 		panel.Disabled,
 		panel.ExitSurveyFormId,
 		panel.PendingCategory,
-		panel.DeleteMentions,
+		panel.MentionBehaviour,
 		panel.TranscriptChannelId,
 		panel.UseThreads,
 		panel.TicketNotificationChannel,
@@ -715,6 +826,15 @@ RETURNING "panel_id";`
 		panel.HideCloseButton,
 		panel.HideCloseWithReasonButton,
 		panel.HideClaimButton,
+		panel.ShowInOpenCommand,
+		panel.StoreTranscripts,
+		panel.OverflowEnabled,
+		panel.OverflowCategoryId,
+		panel.UsersCanClose,
+		panel.CloseConfirmation,
+		panel.FeedbackEnabled,
+		panel.SupportCanView,
+		panel.SupportCanType,
 	).Scan(&panelId)
 
 	return
@@ -746,28 +866,38 @@ UPDATE panels
 		"target_category" = $7,
 		"emoji_name" = $8,
 		"emoji_id" = $9,
-		"welcome_message" = $10,
-		"default_team" = $11,
-		"custom_id" = $12,
-		"image_url" = $13,
-		"thumbnail_url" = $14,
-		"button_style" = $15,
-		"button_label" = $16,
-		"form_id" = $17,
-		"naming_scheme" = $18,
-	    "force_disabled" = $19,
-	    "disabled" = $20,
-	    "exit_survey_form_id" = $21,
-	    "pending_category" = $22,
-		"delete_mentions" = $23,
-		"transcript_channel_id" = $24,
-		"use_threads" = $25,
-		"ticket_notification_channel" = $26,
-		"cooldown_seconds" = $27,
-		"ticket_limit" = $28,
-		"hide_close_button" = $29,
-		"hide_close_with_reason_button" = $30,
-		"hide_claim_button" = $31
+		"emoji_animated" = $10,
+		"welcome_message" = $11,
+		"default_team" = $12,
+		"custom_id" = $13,
+		"image_url" = $14,
+		"thumbnail_url" = $15,
+		"button_style" = $16,
+		"button_label" = $17,
+		"form_id" = $18,
+		"naming_scheme" = $19,
+	    "force_disabled" = $20,
+	    "disabled" = $21,
+	    "exit_survey_form_id" = $22,
+	    "pending_category" = $23,
+		"mention_behaviour" = $24,
+		"transcript_channel_id" = $25,
+		"use_threads" = $26,
+		"ticket_notification_channel" = $27,
+		"cooldown_seconds" = $28,
+		"ticket_limit" = $29,
+		"hide_close_button" = $30,
+		"hide_close_with_reason_button" = $31,
+		"hide_claim_button" = $32,
+		"show_in_open_command" = $33,
+		"store_transcripts" = $34,
+		"overflow_enabled" = $35,
+		"overflow_category_id" = $36,
+		"users_can_close" = $37,
+		"close_confirmation" = $38,
+		"feedback_enabled" = $39,
+		"support_can_view" = $40,
+		"support_can_type" = $41
 	WHERE
 		"panel_id" = $1
 ;`
@@ -782,6 +912,7 @@ UPDATE panels
 		panel.TargetCategory,
 		panel.EmojiName,
 		panel.EmojiId,
+		panel.EmojiAnimated,
 		panel.WelcomeMessageEmbed,
 		panel.WithDefaultTeam,
 		panel.CustomId,
@@ -795,7 +926,7 @@ UPDATE panels
 		panel.Disabled,
 		panel.ExitSurveyFormId,
 		panel.PendingCategory,
-		panel.DeleteMentions,
+		panel.MentionBehaviour,
 		panel.TranscriptChannelId,
 		panel.UseThreads,
 		panel.TicketNotificationChannel,
@@ -804,9 +935,24 @@ UPDATE panels
 		panel.HideCloseButton,
 		panel.HideCloseWithReasonButton,
 		panel.HideClaimButton,
+		panel.ShowInOpenCommand,
+		panel.StoreTranscripts,
+		panel.OverflowEnabled,
+		panel.OverflowCategoryId,
+		panel.UsersCanClose,
+		panel.CloseConfirmation,
+		panel.FeedbackEnabled,
+		panel.SupportCanView,
+		panel.SupportCanType,
 	)
 
 	return err
+}
+
+func (p *PanelTable) SetOverflow(ctx context.Context, panelId int, enabled bool, categoryId *uint64) (err error) {
+	query := `UPDATE panels SET "overflow_enabled" = $2, "overflow_category_id" = $3 WHERE "panel_id" = $1;`
+	_, err = p.Exec(ctx, query, panelId, enabled, categoryId)
+	return
 }
 
 func (p *PanelTable) UpdateMessageId(ctx context.Context, panelId int, messageId uint64) (err error) {
@@ -898,6 +1044,7 @@ func (p *Panel) fieldPtrs() []interface{} {
 		&p.TargetCategory,
 		&p.EmojiName,
 		&p.EmojiId,
+		&p.EmojiAnimated,
 		&p.WelcomeMessageEmbed,
 		&p.WithDefaultTeam,
 		&p.CustomId,
@@ -911,7 +1058,7 @@ func (p *Panel) fieldPtrs() []interface{} {
 		&p.Disabled,
 		&p.ExitSurveyFormId,
 		&p.PendingCategory,
-		&p.DeleteMentions,
+		&p.MentionBehaviour,
 		&p.TranscriptChannelId,
 		&p.UseThreads,
 		&p.TicketNotificationChannel,
@@ -920,5 +1067,14 @@ func (p *Panel) fieldPtrs() []interface{} {
 		&p.HideCloseButton,
 		&p.HideCloseWithReasonButton,
 		&p.HideClaimButton,
+		&p.ShowInOpenCommand,
+		&p.StoreTranscripts,
+		&p.OverflowEnabled,
+		&p.OverflowCategoryId,
+		&p.UsersCanClose,
+		&p.CloseConfirmation,
+		&p.FeedbackEnabled,
+		&p.SupportCanView,
+		&p.SupportCanType,
 	}
 }
