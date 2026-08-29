@@ -34,6 +34,8 @@ CREATE TABLE IF NOT EXISTS embed_fields(
 	FOREIGN KEY("embed_id") REFERENCES embeds("id") ON DELETE CASCADE,
 	PRIMARY KEY("id")
 );
+
+ALTER TABLE embed_fields ALTER COLUMN "name" TYPE VARCHAR(256);
 `
 }
 

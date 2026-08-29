@@ -59,6 +59,9 @@ CREATE TABLE IF NOT EXISTS embeds(
 	PRIMARY KEY("id")
 );
 CREATE INDEX IF NOT EXISTS embeds_guild_id ON embeds("guild_id");
+
+ALTER TABLE embeds ALTER COLUMN "title" TYPE VARCHAR(256);
+ALTER TABLE embeds ALTER COLUMN "author_name" TYPE VARCHAR(256);
 `
 }
 
