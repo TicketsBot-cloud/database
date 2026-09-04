@@ -1,11 +1,13 @@
 module github.com/TicketsBot-cloud/database
 
-go 1.22
+go 1.22.0
 
 toolchain go1.22.4
 
+replace github.com/TicketsBot-cloud/common => ../common
+
 require (
-	github.com/TicketsBot-cloud/common v0.0.0-20250208132851-d5083bb04d98
+	github.com/TicketsBot-cloud/common v0.0.0-20260827064609-69131fc7bd3e
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgtype v1.14.0
 	github.com/jackc/pgx v3.6.2+incompatible
@@ -28,6 +30,6 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/crypto v0.28.0 // indirect
-	golang.org/x/sys v0.26.0 // indirect
+	golang.org/x/sys v0.27.0 // indirect
 	golang.org/x/text v0.19.0 // indirect
 )
