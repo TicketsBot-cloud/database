@@ -4,16 +4,15 @@ go 1.22.0
 
 toolchain go1.22.4
 
-replace github.com/TicketsBot-cloud/common => ../common
+//replace github.com/TicketsBot-cloud/common => ../common
 
 require (
-	github.com/TicketsBot-cloud/common v0.0.0-20260827064609-69131fc7bd3e
+	github.com/TicketsBot-cloud/common v0.0.0-20260905165836-38e4090764a4
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgtype v1.14.0
 	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/jackc/pgx/v4 v4.18.3
 	github.com/json-iterator/go v1.1.12
-	github.com/sirupsen/logrus v1.9.0
 	go.uber.org/zap v1.27.1
 )
 
@@ -30,6 +29,5 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
 	golang.org/x/crypto v0.28.0 // indirect
-	golang.org/x/sys v0.27.0 // indirect
 	golang.org/x/text v0.19.0 // indirect
 )
