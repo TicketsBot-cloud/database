@@ -50,6 +50,11 @@ type Panel struct {
 	FeedbackEnabled                bool    `json:"feedback_enabled"`
 	SupportCanView                 bool    `json:"support_can_view"`
 	SupportCanType                 bool    `json:"support_can_type"`
+	MessageUsesComponentsV2        bool    `json:"message_uses_components_v2"`
+	MessageComponents              *string `json:"message_components"`
+	WelcomeMessageUsesComponentsV2 bool    `json:"welcome_message_uses_components_v2"`
+	WelcomeMessageComponents       *string `json:"welcome_message_components"`
+	Name                           *string `json:"name"`
 }
 
 type PanelWithWelcomeMessage struct {
@@ -122,7 +127,12 @@ CREATE INDEX IF NOT EXISTS panels_guild_id ON panels("guild_id");
 CREATE INDEX IF NOT EXISTS panels_message_id ON panels("message_id");
 CREATE INDEX IF NOT EXISTS panels_form_id ON panels("form_id");
 CREATE INDEX IF NOT EXISTS panels_guild_id_form_id ON panels("guild_id", "form_id");
-CREATE INDEX IF NOT EXISTS panels_custom_id ON panels("custom_id");`
+CREATE INDEX IF NOT EXISTS panels_custom_id ON panels("custom_id");
+ALTER TABLE panels ADD COLUMN IF NOT EXISTS "message_uses_components_v2" bool NOT NULL DEFAULT false;
+ALTER TABLE panels ADD COLUMN IF NOT EXISTS "message_components" JSONB DEFAULT NULL;
+ALTER TABLE panels ADD COLUMN IF NOT EXISTS "welcome_message_uses_components_v2" bool NOT NULL DEFAULT false;
+ALTER TABLE panels ADD COLUMN IF NOT EXISTS "welcome_message_components" JSONB DEFAULT NULL;
+ALTER TABLE panels ADD COLUMN IF NOT EXISTS "name" text DEFAULT NULL;`
 }
 
 func (p *PanelTable) Get(ctx context.Context, messageId uint64) (panel Panel, e error) {
@@ -169,7 +179,12 @@ SELECT
 	close_confirmation,
 	feedback_enabled,
 	support_can_view,
-	support_can_type
+	support_can_type,
+	message_uses_components_v2,
+	message_components,
+	welcome_message_uses_components_v2,
+	welcome_message_components,
+	name
 FROM panels
 WHERE "message_id" = $1;
 `
@@ -226,7 +241,12 @@ SELECT
 	close_confirmation,
 	feedback_enabled,
 	support_can_view,
-	support_can_type
+	support_can_type,
+	message_uses_components_v2,
+	message_components,
+	welcome_message_uses_components_v2,
+	welcome_message_components,
+	name
 FROM panels
 WHERE "panel_id" = $1;
 `
@@ -284,6 +304,11 @@ SELECT
 	panels.feedback_enabled,
 	panels.support_can_view,
 	panels.support_can_type,
+	panels.message_uses_components_v2,
+	panels.message_components,
+	panels.welcome_message_uses_components_v2,
+	panels.welcome_message_components,
+	panels.name,
 	embeds.id,
 	embeds.guild_id,
 	embeds.title,
@@ -402,7 +427,12 @@ SELECT
 	close_confirmation,
 	feedback_enabled,
 	support_can_view,
-	support_can_type
+	support_can_type,
+	message_uses_components_v2,
+	message_components,
+	welcome_message_uses_components_v2,
+	welcome_message_components,
+	name
 FROM panels
 WHERE "guild_id" = $1 AND "custom_id" = $2;
 `
@@ -462,7 +492,12 @@ SELECT
 	close_confirmation,
 	feedback_enabled,
 	support_can_view,
-	support_can_type
+	support_can_type,
+	message_uses_components_v2,
+	message_components,
+	welcome_message_uses_components_v2,
+	welcome_message_components,
+	name
 FROM panels
 WHERE "guild_id" = $1 AND "form_id" = $2;
 `
@@ -522,7 +557,12 @@ SELECT
 	panels.close_confirmation,
 	panels.feedback_enabled,
 	panels.support_can_view,
-	panels.support_can_type
+	panels.support_can_type,
+	panels.message_uses_components_v2,
+	panels.message_components,
+	panels.welcome_message_uses_components_v2,
+	panels.welcome_message_components,
+	panels.name
 FROM panels
 INNER JOIN forms
 ON forms.form_id = panels.form_id
@@ -584,7 +624,12 @@ SELECT
 	close_confirmation,
 	feedback_enabled,
 	support_can_view,
-	support_can_type
+	support_can_type,
+	message_uses_components_v2,
+	message_components,
+	welcome_message_uses_components_v2,
+	welcome_message_components,
+	name
 FROM panels
 WHERE "guild_id" = $1
 ORDER BY "panel_id" ASC;`
@@ -652,6 +697,11 @@ SELECT
 	panels.feedback_enabled,
 	panels.support_can_view,
 	panels.support_can_type,
+	panels.message_uses_components_v2,
+	panels.message_components,
+	panels.welcome_message_uses_components_v2,
+	panels.welcome_message_components,
+	panels.name,
 	embeds.id,
 	embeds.guild_id,
 	embeds.title,
@@ -787,9 +837,14 @@ INSERT INTO panels(
 	"close_confirmation",
 	"feedback_enabled",
 	"support_can_view",
-	"support_can_type"
+	"support_can_type",
+	"message_uses_components_v2",
+	"message_components",
+	"welcome_message_uses_components_v2",
+	"welcome_message_components",
+	"name"
 )
-VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41)
+VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43, $44, $45, $46)
 ON CONFLICT("message_id") DO NOTHING
 RETURNING "panel_id";`
 
@@ -835,6 +890,11 @@ RETURNING "panel_id";`
 		panel.FeedbackEnabled,
 		panel.SupportCanView,
 		panel.SupportCanType,
+		panel.MessageUsesComponentsV2,
+		panel.MessageComponents,
+		panel.WelcomeMessageUsesComponentsV2,
+		panel.WelcomeMessageComponents,
+		panel.Name,
 	).Scan(&panelId)
 
 	return
@@ -897,7 +957,12 @@ UPDATE panels
 		"close_confirmation" = $38,
 		"feedback_enabled" = $39,
 		"support_can_view" = $40,
-		"support_can_type" = $41
+		"support_can_type" = $41,
+		"message_uses_components_v2" = $42,
+		"message_components" = $43,
+		"welcome_message_uses_components_v2" = $44,
+		"welcome_message_components" = $45,
+		"name" = $46
 	WHERE
 		"panel_id" = $1
 ;`
@@ -944,6 +1009,11 @@ UPDATE panels
 		panel.FeedbackEnabled,
 		panel.SupportCanView,
 		panel.SupportCanType,
+		panel.MessageUsesComponentsV2,
+		panel.MessageComponents,
+		panel.WelcomeMessageUsesComponentsV2,
+		panel.WelcomeMessageComponents,
+		panel.Name,
 	)
 
 	return err
@@ -1010,12 +1080,16 @@ AND "panel_id" IN (
 		}
 	} else if panelCount < freeLimit {
 		// Too few enabled: re-enable force-disabled panels to fill the vacancy, oldest first.
+		// Never re-enable a panel force-disabled for using Components V2 - that disablement
+		// is a premium gate, not part of the free panel quota this function balances, and
+		// re-enabling it here would silently restore a premium feature to a free-tier guild.
 		query := `
 UPDATE panels SET "force_disabled" = false
 WHERE "guild_id" = $1
+AND "message_uses_components_v2" = false
 AND "panel_id" IN (
 	SELECT "panel_id" FROM panels
-	WHERE "guild_id" = $1 AND "force_disabled" = true
+	WHERE "guild_id" = $1 AND "force_disabled" = true AND "message_uses_components_v2" = false
 	ORDER BY "panel_id" ASC LIMIT $2
 );`
 		if _, err := tx.Exec(ctx, query, guildId, freeLimit-panelCount); err != nil {
@@ -1024,6 +1098,24 @@ AND "panel_id" IN (
 	}
 
 	return tx.Commit(ctx)
+}
+
+// SetComponentsV2ForceDisabled sets force_disabled for all of a guild's panels that use
+// a Components V2 button message. Used by the premium downgrade sweep.
+func (p *PanelTable) SetComponentsV2ForceDisabled(ctx context.Context, guildId uint64, forceDisabled bool) error {
+	query := `UPDATE panels SET "force_disabled" = $2 WHERE "guild_id" = $1 AND "message_uses_components_v2" = true;`
+	_, err := p.Exec(ctx, query, guildId, forceDisabled)
+	return err
+}
+
+// ClearWelcomeMessageComponentsV2 disables Components V2 for a guild's welcome messages and
+// clears the stored component tree, without touching the panel's button message or force_disabled
+// state. Used by the premium downgrade sweep: losing Components V2 access on the welcome message
+// falls back to the classic hardcoded welcome text, it does not disable the panel.
+func (p *PanelTable) ClearWelcomeMessageComponentsV2(ctx context.Context, guildId uint64) error {
+	query := `UPDATE panels SET "welcome_message_uses_components_v2" = false, "welcome_message_components" = NULL WHERE "guild_id" = $1 AND "welcome_message_uses_components_v2" = true;`
+	_, err := p.Exec(ctx, query, guildId)
+	return err
 }
 
 func (p *PanelTable) Delete(ctx context.Context, panelId int) (err error) {
@@ -1076,5 +1168,10 @@ func (p *Panel) fieldPtrs() []interface{} {
 		&p.FeedbackEnabled,
 		&p.SupportCanView,
 		&p.SupportCanType,
+		&p.MessageUsesComponentsV2,
+		&p.MessageComponents,
+		&p.WelcomeMessageUsesComponentsV2,
+		&p.WelcomeMessageComponents,
+		&p.Name,
 	}
 }

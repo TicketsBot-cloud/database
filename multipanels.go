@@ -15,6 +15,10 @@ type MultiPanel struct {
 	SelectMenu            bool                   `json:"select_menu"`
 	SelectMenuPlaceholder *string                `json:"select_menu_placeholder"`
 	Embed                 *CustomEmbedWithFields `json:"embed"`
+	UsesComponentsV2      bool                   `json:"uses_components_v2"`
+	Components            *string                `json:"components"`
+	ForceDisabled         bool                   `json:"force_disabled"`
+	Name                  *string                `json:"name"`
 }
 
 type MultiPanelTable struct {
@@ -40,13 +44,17 @@ CREATE TABLE IF NOT EXISTS multi_panels(
 	PRIMARY KEY("id")
 );
 CREATE INDEX IF NOT EXISTS multi_panels_guild_id ON multi_panels("guild_id");
-CREATE INDEX IF NOT EXISTS multi_panels_message_id ON multi_panels("message_id");`
+CREATE INDEX IF NOT EXISTS multi_panels_message_id ON multi_panels("message_id");
+ALTER TABLE multi_panels ADD COLUMN IF NOT EXISTS "uses_components_v2" bool NOT NULL DEFAULT false;
+ALTER TABLE multi_panels ADD COLUMN IF NOT EXISTS "components" JSONB DEFAULT NULL;
+ALTER TABLE multi_panels ADD COLUMN IF NOT EXISTS "force_disabled" bool NOT NULL DEFAULT false;
+ALTER TABLE multi_panels ADD COLUMN IF NOT EXISTS "name" text DEFAULT NULL;`
 }
 
 func (p *MultiPanelTable) Get(ctx context.Context, id int) (MultiPanel, bool, error) {
 	query := `
 SELECT
-	"id", "message_id", "channel_id", "guild_id", "select_menu", "select_menu_placeholder", "embed"
+	"id", "message_id", "channel_id", "guild_id", "select_menu", "select_menu_placeholder", "embed", "uses_components_v2", "components", "force_disabled", "name"
 FROM
 	multi_panels
 WHERE
@@ -56,7 +64,7 @@ WHERE
 	var panel MultiPanel
 	var embedRaw *string
 	err := p.QueryRow(ctx, query, id).Scan(
-		&panel.Id, &panel.MessageId, &panel.ChannelId, &panel.GuildId, &panel.SelectMenu, &panel.SelectMenuPlaceholder, &embedRaw,
+		&panel.Id, &panel.MessageId, &panel.ChannelId, &panel.GuildId, &panel.SelectMenu, &panel.SelectMenuPlaceholder, &embedRaw, &panel.UsesComponentsV2, &panel.Components, &panel.ForceDisabled, &panel.Name,
 	)
 
 	if err != nil {
@@ -79,7 +87,7 @@ WHERE
 func (p *MultiPanelTable) GetByMessageId(ctx context.Context, messageId uint64) (MultiPanel, bool, error) {
 	query := `
 SELECT
-	"id", "message_id", "channel_id", "guild_id", "select_menu", "select_menu_placeholder", "embed"
+	"id", "message_id", "channel_id", "guild_id", "select_menu", "select_menu_placeholder", "embed", "uses_components_v2", "components", "force_disabled", "name"
 FROM
 	multi_panels
 WHERE
@@ -89,7 +97,7 @@ WHERE
 	var panel MultiPanel
 	var embedRaw *string
 	err := p.QueryRow(ctx, query, messageId).Scan(
-		&panel.Id, &panel.MessageId, &panel.ChannelId, &panel.GuildId, &panel.SelectMenu, &panel.SelectMenuPlaceholder, &embedRaw,
+		&panel.Id, &panel.MessageId, &panel.ChannelId, &panel.GuildId, &panel.SelectMenu, &panel.SelectMenuPlaceholder, &embedRaw, &panel.UsesComponentsV2, &panel.Components, &panel.ForceDisabled, &panel.Name,
 	)
 
 	if err != nil {
@@ -111,7 +119,7 @@ WHERE
 
 func (p *MultiPanelTable) GetByGuild(ctx context.Context, guildId uint64) ([]MultiPanel, error) {
 	query := `
-SELECT "id", "message_id", "channel_id", "guild_id", "select_menu", "select_menu_placeholder", "embed"
+SELECT "id", "message_id", "channel_id", "guild_id", "select_menu", "select_menu_placeholder", "embed", "uses_components_v2", "components", "force_disabled", "name"
 FROM multi_panels
 WHERE "guild_id" = $1;
 `
@@ -127,7 +135,7 @@ WHERE "guild_id" = $1;
 		var panel MultiPanel
 		var embedRaw *string
 		err := rows.Scan(
-			&panel.Id, &panel.MessageId, &panel.ChannelId, &panel.GuildId, &panel.SelectMenu, &panel.SelectMenuPlaceholder, &embedRaw,
+			&panel.Id, &panel.MessageId, &panel.ChannelId, &panel.GuildId, &panel.SelectMenu, &panel.SelectMenuPlaceholder, &embedRaw, &panel.UsesComponentsV2, &panel.Components, &panel.ForceDisabled, &panel.Name,
 		)
 
 		if err != nil {
@@ -149,9 +157,9 @@ WHERE "guild_id" = $1;
 func (p *MultiPanelTable) Create(ctx context.Context, panel MultiPanel) (int, error) {
 	query := `
 INSERT INTO
-	multi_panels("message_id", "channel_id", "guild_id", "select_menu", "select_menu_placeholder", "embed")
+	multi_panels("message_id", "channel_id", "guild_id", "select_menu", "select_menu_placeholder", "embed", "uses_components_v2", "components", "force_disabled", "name")
 VALUES
-	($1, $2, $3, $4, $5, $6)
+	($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING
 	"id"
 ;
@@ -169,7 +177,7 @@ RETURNING
 
 	var multiPanelId int
 	if err := p.QueryRow(ctx, query,
-		panel.MessageId, panel.ChannelId, panel.GuildId, panel.SelectMenu, panel.SelectMenuPlaceholder, embedRaw,
+		panel.MessageId, panel.ChannelId, panel.GuildId, panel.SelectMenu, panel.SelectMenuPlaceholder, embedRaw, panel.UsesComponentsV2, panel.Components, panel.ForceDisabled, panel.Name,
 	).Scan(&multiPanelId); err != nil {
 		return 0, err
 	}
@@ -184,7 +192,11 @@ UPDATE multi_panels
 		"channel_id" = $3,
 		"select_menu" = $4,
 		"select_menu_placeholder" = $5,
-		"embed" = $6
+		"embed" = $6,
+		"uses_components_v2" = $7,
+		"components" = $8,
+		"force_disabled" = $9,
+		"name" = $10
 	WHERE
 		"id" = $1
 ;`
@@ -200,7 +212,7 @@ UPDATE multi_panels
 	}
 
 	_, err = p.Exec(ctx, query,
-		multiPanelId, multiPanel.MessageId, multiPanel.ChannelId, multiPanel.SelectMenu, multiPanel.SelectMenuPlaceholder, embedRaw,
+		multiPanelId, multiPanel.MessageId, multiPanel.ChannelId, multiPanel.SelectMenu, multiPanel.SelectMenuPlaceholder, embedRaw, multiPanel.UsesComponentsV2, multiPanel.Components, multiPanel.ForceDisabled, multiPanel.Name,
 	)
 
 	return
@@ -215,6 +227,14 @@ WHERE "id" = $2;
 
 	_, err = p.Exec(ctx, query, messageId, multiPanelId)
 	return
+}
+
+// SetForceDisabled sets force_disabled for all of a guild's multi-panels that use Components V2.
+// Used by the premium downgrade sweep.
+func (p *MultiPanelTable) SetForceDisabled(ctx context.Context, guildId uint64, forceDisabled bool) error {
+	query := `UPDATE multi_panels SET "force_disabled" = $2 WHERE "guild_id" = $1 AND "uses_components_v2" = true;`
+	_, err := p.Exec(ctx, query, guildId, forceDisabled)
+	return err
 }
 
 func (p *MultiPanelTable) Delete(ctx context.Context, guildId uint64, multiPanelId int) (success bool, err error) {
