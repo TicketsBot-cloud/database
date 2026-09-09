@@ -6,11 +6,14 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 )
 
+const DefaultTicketLimit uint8 = 10
+
 type Settings struct {
-	ContextMenuPermissionLevel  int  `json:"context_menu_permission_level,string"`
-	ContextMenuAddSender        bool `json:"context_menu_add_sender"`
-	ContextMenuPanel            *int `json:"context_menu_panel"`
-	AnonymiseDashboardResponses bool `json:"anonymise_dashboard_responses"`
+	ContextMenuPermissionLevel  int   `json:"context_menu_permission_level,string"`
+	ContextMenuAddSender        bool  `json:"context_menu_add_sender"`
+	ContextMenuPanel            *int  `json:"context_menu_panel"`
+	AnonymiseDashboardResponses bool  `json:"anonymise_dashboard_responses"`
+	TicketLimit                 uint8 `json:"ticket_limit"`
 }
 
 func defaultSettings() Settings {
@@ -19,6 +22,7 @@ func defaultSettings() Settings {
 		ContextMenuAddSender:        true,
 		ContextMenuPanel:            nil,
 		AnonymiseDashboardResponses: false,
+		TicketLimit:                 DefaultTicketLimit,
 	}
 }
 
@@ -40,9 +44,11 @@ CREATE TABLE IF NOT EXISTS settings(
 	"context_menu_add_sender" bool DEFAULT 't',
 	"context_menu_panel" int DEFAULT NULL,
 	"anonymise_dashboard_responses" bool DEFAULT 'f',
+	"ticket_limit" int2 NOT NULL DEFAULT 10,
 	FOREIGN KEY("context_menu_panel") REFERENCES panels("panel_id") ON DELETE SET NULL,
 	PRIMARY KEY("guild_id")
 );
+ALTER TABLE settings ADD COLUMN IF NOT EXISTS "ticket_limit" int2 NOT NULL DEFAULT 10;
 `
 }
 
@@ -52,7 +58,8 @@ SELECT
 	"context_menu_permission_level",
 	"context_menu_add_sender",
 	"context_menu_panel",
-	"anonymise_dashboard_responses"
+	"anonymise_dashboard_responses",
+	"ticket_limit"
 FROM settings
 WHERE "guild_id" = $1;
 `
@@ -63,6 +70,7 @@ WHERE "guild_id" = $1;
 		&settings.ContextMenuAddSender,
 		&settings.ContextMenuPanel,
 		&settings.AnonymiseDashboardResponses,
+		&settings.TicketLimit,
 	)
 
 	if err == nil {
@@ -81,15 +89,17 @@ INSERT INTO settings(
 	"context_menu_permission_level",
 	"context_menu_add_sender",
 	"context_menu_panel",
-	"anonymise_dashboard_responses"
+	"anonymise_dashboard_responses",
+	"ticket_limit"
 )
-VALUES($1, $2, $3, $4, $5)
+VALUES($1, $2, $3, $4, $5, $6)
 ON CONFLICT("guild_id")
 DO UPDATE SET
 	"context_menu_permission_level" = $2,
 	"context_menu_add_sender" = $3,
 	"context_menu_panel" = $4,
-	"anonymise_dashboard_responses" = $5
+	"anonymise_dashboard_responses" = $5,
+	"ticket_limit" = $6
 ;
 `
 
@@ -99,6 +109,7 @@ DO UPDATE SET
 		settings.ContextMenuAddSender,
 		settings.ContextMenuPanel,
 		settings.AnonymiseDashboardResponses,
+		settings.TicketLimit,
 	)
 
 	return
@@ -115,4 +126,3 @@ DO UPDATE SET "context_menu_permission_level" = $2;
 	_, err = s.Exec(ctx, query, guildId, permissionLevel)
 	return
 }
-
