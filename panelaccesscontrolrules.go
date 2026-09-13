@@ -75,7 +75,11 @@ func (p *PanelAccessControlRules) GetAll(ctx context.Context, panelId int) ([]Pa
 		rules = append(rules, rule)
 	}
 
-	return rules[:], nil
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return rules, nil
 }
 
 // GetAllForGuild returns a map[panel_id][]rules
@@ -98,9 +102,15 @@ func (p *PanelAccessControlRules) GetAllForGuild(ctx context.Context, guildId ui
 		rules[panelId] = append(rules[panelId], rule)
 	}
 
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
 	return rules, nil
 }
 
+// ErrNoRuleMatched covers both "panel has no rules" and "rules exist, none match" -- opposite
+// meanings. Callers needing to distinguish them must use GetAll and evaluate the whole set.
 func (p *PanelAccessControlRules) GetFirstMatched(ctx context.Context, panelId int, userRoles []uint64) (uint64, AccessControlAction, error) {
 	idArray := &pgtype.Int8Array{}
 	if err := idArray.Set(userRoles); err != nil {
