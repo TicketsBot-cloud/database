@@ -35,8 +35,9 @@ const (
 
 	AuditActionFormInputsUpdate AuditActionType = 45
 
-	AuditActionTagCreate AuditActionType = 50
-	AuditActionTagDelete AuditActionType = 51
+	AuditActionTagCreate      AuditActionType = 50
+	AuditActionTagDelete      AuditActionType = 51
+	AuditActionTagAliasResync AuditActionType = 52
 
 	AuditActionTeamCreate AuditActionType = 60
 	AuditActionTeamDelete AuditActionType = 61
