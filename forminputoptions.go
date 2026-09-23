@@ -192,3 +192,9 @@ func (f *FormInputOptionTable) DeleteTx(ctx context.Context, tx pgx.Tx, id int) 
 	_, err := tx.Exec(ctx, q, id)
 	return err
 }
+
+func (f *FormInputOptionTable) DeleteByFormInputTx(ctx context.Context, tx pgx.Tx, formInputId int) error {
+	query := `DELETE FROM form_input_option WHERE "form_input_id" = $1;`
+	_, err := tx.Exec(ctx, query, formInputId)
+	return err
+}

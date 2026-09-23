@@ -19,6 +19,7 @@ type FormInput struct {
 	Label       string  `json:"label"`
 	Description *string `json:"description"`
 	Placeholder *string `json:"placeholder,omitempty"`
+	Content     *string `json:"content,omitempty"`
 	Required    bool    `json:"required"`
 	MinLength   *uint16 `json:"min_length,omitempty"`
 	MaxLength   *uint16 `json:"max_length,omitempty"`
@@ -49,6 +50,7 @@ func (f FormInputTable) Schema() string {
 	"required" BOOL NOT NULL DEFAULT 't',
 	"min_length" int2 DEFAULT NULL,
 	"max_length" int2 DEFAULT NULL,
+	"content" VARCHAR(4000) NULL,
 	FOREIGN KEY("form_id") REFERENCES forms("form_id") ON DELETE CASCADE,
 	UNIQUE("form_id", "position") DEFERRABLE INITIALLY DEFERRED,
 	CHECK(position >= 1),
@@ -56,11 +58,13 @@ func (f FormInputTable) Schema() string {
 	PRIMARY KEY("id")
 	);
 	CREATE INDEX IF NOT EXISTS form_input_form_id ON form_input("form_id");
+
+	ALTER TABLE form_input ADD COLUMN IF NOT EXISTS "content" VARCHAR(4000) DEFAULT NULL;
 	`
 }
 
 func (f *FormInputTable) Get(ctx context.Context, id int) (input FormInput, ok bool, e error) {
-	query := `SELECT "id", "form_id", "type", "position", "custom_id", "style", "label", "description", "placeholder", "required", "min_length", "max_length" FROM form_input WHERE "id" = $1; `
+	query := `SELECT "id", "form_id", "type", "position", "custom_id", "style", "label", "description", "placeholder", "content", "required", "min_length", "max_length" FROM form_input WHERE "id" = $1; `
 
 	err := f.QueryRow(ctx, query, id).Scan(
 		&input.Id,
@@ -72,6 +76,7 @@ func (f *FormInputTable) Get(ctx context.Context, id int) (input FormInput, ok b
 		&input.Label,
 		&input.Description,
 		&input.Placeholder,
+		&input.Content,
 		&input.Required,
 		&input.MinLength,
 		&input.MaxLength,
@@ -90,7 +95,7 @@ func (f *FormInputTable) Get(ctx context.Context, id int) (input FormInput, ok b
 
 func (f *FormInputTable) GetInputs(ctx context.Context, formId int) (inputs []FormInput, e error) {
 	query := `
-	SELECT "id", "form_id", "type", "position", "custom_id", "style", "label", "description", "placeholder", "required", "min_length", "max_length"
+	SELECT "id", "form_id", "type", "position", "custom_id", "style", "label", "description", "placeholder", "content", "required", "min_length", "max_length"
 	FROM form_input
 	WHERE "form_id" = $1
 	ORDER BY "position" ASC; `
@@ -102,7 +107,7 @@ func (f *FormInputTable) GetInputs(ctx context.Context, formId int) (inputs []Fo
 
 	for rows.Next() {
 		var input FormInput
-		if err := rows.Scan(&input.Id, &input.FormId, &input.Type, &input.Position, &input.CustomId, &input.Style, &input.Label, &input.Description, &input.Placeholder, &input.Required, &input.MinLength, &input.MaxLength); err != nil {
+		if err := rows.Scan(&input.Id, &input.FormId, &input.Type, &input.Position, &input.CustomId, &input.Style, &input.Label, &input.Description, &input.Placeholder, &input.Content, &input.Required, &input.MinLength, &input.MaxLength); err != nil {
 			return nil, err
 		}
 
@@ -115,7 +120,7 @@ func (f *FormInputTable) GetInputs(ctx context.Context, formId int) (inputs []Fo
 // Form ID -> Form Input
 func (f *FormInputTable) GetInputsForGuild(ctx context.Context, guildId uint64) (inputs map[int][]FormInput, e error) {
 	query := `
-	SELECT form_input.id, form_input.form_id, form_input.type, form_input.position, form_input.custom_id, form_input.style, form_input.label, form_input.description, form_input.placeholder, form_input.required, form_input.min_length, form_input.max_length
+	SELECT form_input.id, form_input.form_id, form_input.type, form_input.position, form_input.custom_id, form_input.style, form_input.label, form_input.description, form_input.placeholder, form_input.content, form_input.required, form_input.min_length, form_input.max_length
 	FROM form_input
 	INNER JOIN forms ON form_input.form_id = forms.form_id
 	WHERE forms.guild_id = $1
@@ -130,7 +135,7 @@ func (f *FormInputTable) GetInputsForGuild(ctx context.Context, guildId uint64) 
 	inputs = make(map[int][]FormInput)
 	for rows.Next() {
 		var input FormInput
-		if err := rows.Scan(&input.Id, &input.FormId, &input.Type, &input.Position, &input.CustomId, &input.Style, &input.Label, &input.Description, &input.Placeholder, &input.Required, &input.MinLength, &input.MaxLength); err != nil {
+		if err := rows.Scan(&input.Id, &input.FormId, &input.Type, &input.Position, &input.CustomId, &input.Style, &input.Label, &input.Description, &input.Placeholder, &input.Content, &input.Required, &input.MinLength, &input.MaxLength); err != nil {
 			return nil, err
 		}
 
@@ -147,7 +152,7 @@ func (f *FormInputTable) GetInputsForGuild(ctx context.Context, guildId uint64) 
 // custom_id -> FormInput
 func (f *FormInputTable) GetAllInputsByCustomId(ctx context.Context, guildId uint64) (map[string]FormInput, error) {
 	query := `
-	SELECT form_input.id, form_input.form_id, form_input.type, form_input.position, form_input.custom_id, form_input.style, form_input.label, form_input.description, form_input.placeholder, form_input.required, form_input.min_length, form_input.max_length
+	SELECT form_input.id, form_input.form_id, form_input.type, form_input.position, form_input.custom_id, form_input.style, form_input.label, form_input.description, form_input.placeholder, form_input.content, form_input.required, form_input.min_length, form_input.max_length
 	FROM form_input
 	INNER JOIN forms ON form_input.form_id = forms.form_id
 	WHERE forms.guild_id = $1
@@ -162,7 +167,7 @@ func (f *FormInputTable) GetAllInputsByCustomId(ctx context.Context, guildId uin
 	inputs := make(map[string]FormInput)
 	for rows.Next() {
 		var input FormInput
-		if err := rows.Scan(&input.Id, &input.FormId, &input.Type, &input.Position, &input.CustomId, &input.Style, &input.Label, &input.Description, &input.Placeholder, &input.Required, &input.MinLength, &input.MaxLength); err != nil {
+		if err := rows.Scan(&input.Id, &input.FormId, &input.Type, &input.Position, &input.CustomId, &input.Style, &input.Label, &input.Description, &input.Placeholder, &input.Content, &input.Required, &input.MinLength, &input.MaxLength); err != nil {
 			return nil, err
 		}
 
@@ -180,18 +185,19 @@ func (f *FormInputTable) Create(ctx context.Context,
 	label string,
 	description *string,
 	placeholder *string,
+	content *string,
 	required bool,
 	minLength *uint16,
 	maxLength *uint16,
 ) (int, error) {
 	query := `
-	INSERT INTO form_input("form_id", "type", "position", "custom_id", "style", "label", "description", "placeholder", "required", "min_length", "max_length")
-	VALUES($1, $2, (SELECT COALESCE(MAX("position"), 0) + 1 FROM form_input WHERE "form_id" = $1), $3, $4, $5, $6, $7, $8, $9, $10)
+	INSERT INTO form_input("form_id", "type", "position", "custom_id", "style", "label", "description", "placeholder", "content", "required", "min_length", "max_length")
+	VALUES($1, $2, (SELECT COALESCE(MAX("position"), 0) + 1 FROM form_input WHERE "form_id" = $1), $3, $4, $5, $6, $7, $8, $9, $10, $11)
 	RETURNING "id";
 	`
 
 	var id int
-	if err := f.QueryRow(ctx, query, formId, inputType, customId, style, label, description, placeholder, required, minLength, maxLength).Scan(&id); err != nil {
+	if err := f.QueryRow(ctx, query, formId, inputType, customId, style, label, description, placeholder, content, required, minLength, maxLength).Scan(&id); err != nil {
 		return 0, err
 	}
 
@@ -209,18 +215,19 @@ func (f *FormInputTable) CreateTx(
 	label string,
 	description *string,
 	placeholder *string,
+	content *string,
 	required bool,
 	minLength *uint16,
 	maxLength *uint16,
 ) (int, error) {
 	query := `
-	INSERT INTO form_input("form_id", "type", "position", "custom_id", "style", "label", "description", "placeholder", "required", "min_length", "max_length")
-	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+	INSERT INTO form_input("form_id", "type", "position", "custom_id", "style", "label", "description", "placeholder", "content", "required", "min_length", "max_length")
+	VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 	RETURNING "id";
 	`
 
 	var id int
-	if err := tx.QueryRow(ctx, query, formId, inputType, position, customId, style, label, description, placeholder, required, minLength, maxLength).Scan(&id); err != nil {
+	if err := tx.QueryRow(ctx, query, formId, inputType, position, customId, style, label, description, placeholder, content, required, minLength, maxLength).Scan(&id); err != nil {
 		return 0, err
 	}
 
@@ -235,13 +242,14 @@ func (f *FormInputTable) Update(ctx context.Context, input FormInput) (err error
 	"label" = $4,
 	"description" = $5,
 	"placeholder" = $6,
-	"required" = $7,
-	"min_length" = $8,
-	"max_length" = $9
+	"content" = $7,
+	"required" = $8,
+	"min_length" = $9,
+	"max_length" = $10
 	WHERE "id" = $1;
 	`
 
-	_, err = f.Exec(ctx, query, input.Id, input.Type, input.Style, input.Label, input.Description, input.Placeholder, input.Required, input.MinLength, input.MaxLength)
+	_, err = f.Exec(ctx, query, input.Id, input.Type, input.Style, input.Label, input.Description, input.Placeholder, input.Content, input.Required, input.MinLength, input.MaxLength)
 	return
 }
 
@@ -254,13 +262,14 @@ func (f *FormInputTable) UpdateTx(ctx context.Context, tx pgx.Tx, input FormInpu
 	"label"= $5,
 	"description"= $6,
 	"placeholder" = $7,
-	"required" = $8,
-	"min_length" = $9,
-	"max_length" = $10
+	"content" = $8,
+	"required" = $9,
+	"min_length" = $10,
+	"max_length" = $11
 	WHERE "id" = $1;
 	`
 
-	_, err = tx.Exec(ctx, query, input.Id, input.Type, input.Position, input.Style, input.Label, input.Description, input.Placeholder, input.Required, input.MinLength, input.MaxLength)
+	_, err = tx.Exec(ctx, query, input.Id, input.Type, input.Position, input.Style, input.Label, input.Description, input.Placeholder, input.Content, input.Required, input.MinLength, input.MaxLength)
 	return
 }
 
