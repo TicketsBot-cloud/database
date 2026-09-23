@@ -29,6 +29,7 @@ type GalleryFormInputSnapshot struct {
 	Label       string                           `json:"label"`
 	Description *string                          `json:"description,omitempty"`
 	Placeholder *string                          `json:"placeholder,omitempty"`
+	Content     *string                          `json:"content,omitempty"`
 	Required    bool                             `json:"required"`
 	MinLength   *uint16                          `json:"min_length,omitempty"`
 	MaxLength   *uint16                          `json:"max_length,omitempty"`
