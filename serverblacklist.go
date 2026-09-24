@@ -79,6 +79,7 @@ func (b *ServerBlacklist) ListAll(ctx context.Context) ([]uint64, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	var guilds []uint64
 	for rows.Next() {
@@ -90,7 +91,7 @@ func (b *ServerBlacklist) ListAll(ctx context.Context) ([]uint64, error) {
 		guilds = append(guilds, guildId)
 	}
 
-	return guilds, nil
+	return guilds, rows.Err()
 }
 
 func (b *ServerBlacklist) Add(ctx context.Context, guildId uint64, reason *string, ownerId *uint64, realOwnerId *uint64) (err error) {
@@ -110,6 +111,7 @@ func (b *ServerBlacklist) ListAllEntries(ctx context.Context) ([]ServerBlacklist
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	var entries []ServerBlacklistEntry
 	for rows.Next() {
@@ -119,6 +121,6 @@ func (b *ServerBlacklist) ListAllEntries(ctx context.Context) ([]ServerBlacklist
 		}
 		entries = append(entries, entry)
 	}
-	return entries, nil
+	return entries, rows.Err()
 }
 

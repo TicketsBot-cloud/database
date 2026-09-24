@@ -50,6 +50,7 @@ func (b *GlobalBlacklist) ListAll(ctx context.Context) (users []uint64, err erro
 	if err != nil {
 		return
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		var userId uint64
@@ -60,6 +61,7 @@ func (b *GlobalBlacklist) ListAll(ctx context.Context) (users []uint64, err erro
 		users = append(users, userId)
 	}
 
+	err = rows.Err()
 	return
 }
 
