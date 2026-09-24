@@ -93,6 +93,7 @@ type Database struct {
 	Settings                       *SettingsTable
 	Skus                           *Skus
 	StaffOverride                  *StaffOverride
+	SubmissionBlacklist            *SubmissionBlacklist
 	SubscriptionSkus               *SubscriptionSkus
 	SupportTeam                    *SupportTeamTable
 	SupportTeamMembers             *SupportTeamMembersTable
@@ -204,6 +205,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		Settings:                       newSettingsTable(pool),
 		Skus:                           newSkusTable(pool),
 		StaffOverride:                  newStaffOverride(pool),
+		SubmissionBlacklist:            newSubmissionBlacklist(pool),
 		SubscriptionSkus:               newSubscriptionSkusTable(pool),
 		SupportTeam:                    newSupportTeamTable(pool),
 		SupportTeamMembers:             newSupportTeamMembersTable(pool),
@@ -320,6 +322,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.ServerBlacklist,
 		d.Settings,
 		d.StaffOverride,
+		d.SubmissionBlacklist,
 		d.SupportTeam,
 		d.SupportTeamMembers,
 		d.SupportTeamRoles,
