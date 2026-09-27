@@ -155,6 +155,9 @@ const (
 	AuditActionFeatureFlagToggle      AuditActionType = 440
 	AuditActionFeatureFlagCreate      AuditActionType = 441
 	AuditActionFeatureFlagRulesUpdate AuditActionType = 442
+
+	AuditActionSubmissionBlacklistAdd    AuditActionType = 450
+	AuditActionSubmissionBlacklistRemove AuditActionType = 451
 )
 
 type AuditCategory int16
@@ -206,6 +209,7 @@ const (
 	AuditResourceNotification          AuditResourceType = 36
 	AuditResourceUserEmailVerification AuditResourceType = 37
 	AuditResourceFeatureFlag           AuditResourceType = 38
+	AuditResourceSubmissionBlacklist   AuditResourceType = 39
 )
 
 type AuditLogEntry struct {

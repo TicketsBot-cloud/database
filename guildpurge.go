@@ -102,9 +102,10 @@ var guildPurgeLegacy = []string{
 
 // Guild-scoped but deliberately retained; keeps the drift test honest.
 var guildPurgeExempt = map[string]string{
-	"guild_leave_time": "drives the purge itself; the caller deletes the row once the purge succeeds",
-	"entitlements":     "billing record, retained beyond the guild",
-	"server_blacklist": "global ban list; purging it would silently un-ban the guild",
+	"guild_leave_time":     "drives the purge itself; the caller deletes the row once the purge succeeds",
+	"entitlements":         "billing record, retained beyond the guild",
+	"server_blacklist":     "global ban list; purging it would silently un-ban the guild",
+	"submission_blacklist": "gallery ban list; purging it would silently un-ban the guild",
 }
 
 // PurgeGuildData deletes all data associated with a guild from all tables.
