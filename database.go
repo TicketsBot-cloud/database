@@ -77,6 +77,7 @@ type Database struct {
 	PanelTeams                     *PanelTeamsTable
 	PanelTicketPermissions         *PanelTicketPermissionsTable
 	PanelAutoClose                 *PanelAutoCloseTable
+	PanelCloseReasons              *PanelCloseReasonsTable
 	PanelUserMention               *PanelUserMention
 	PanelHereMention               *PanelHereMention
 	Participants                   *ParticipantTable
@@ -93,6 +94,7 @@ type Database struct {
 	Settings                       *SettingsTable
 	Skus                           *Skus
 	StaffOverride                  *StaffOverride
+	SubmissionBlacklist            *SubmissionBlacklist
 	SubscriptionSkus               *SubscriptionSkus
 	SupportTeam                    *SupportTeamTable
 	SupportTeamMembers             *SupportTeamMembersTable
@@ -188,6 +190,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		PanelTeams:                     newPanelTeamsTable(pool),
 		PanelTicketPermissions:         newPanelTicketPermissionsTable(pool),
 		PanelAutoClose:                 newPanelAutoCloseTable(pool),
+		PanelCloseReasons:              newPanelCloseReasonsTable(pool),
 		PanelUserMention:               newPanelUserMention(pool),
 		PanelHereMention:               newPanelHereMention(pool),
 		Participants:                   newParticipantTable(pool),
@@ -204,6 +207,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		Settings:                       newSettingsTable(pool),
 		Skus:                           newSkusTable(pool),
 		StaffOverride:                  newStaffOverride(pool),
+		SubmissionBlacklist:            newSubmissionBlacklist(pool),
 		SubscriptionSkus:               newSubscriptionSkusTable(pool),
 		SupportTeam:                    newSupportTeamTable(pool),
 		SupportTeamMembers:             newSupportTeamMembersTable(pool),
@@ -305,6 +309,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.PanelSupportHours,         // must be created after panels table
 		d.PanelSupportHoursSettings, // must be created after panels table
 		d.PanelAutoClose,            // must be created after panels table
+		d.PanelCloseReasons,
 		d.PanelUserMention,
 		d.PanelHereMention,
 		d.PatreonEntitlements,
@@ -320,6 +325,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.ServerBlacklist,
 		d.Settings,
 		d.StaffOverride,
+		d.SubmissionBlacklist,
 		d.SupportTeam,
 		d.SupportTeamMembers,
 		d.SupportTeamRoles,
