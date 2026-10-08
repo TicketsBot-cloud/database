@@ -77,6 +77,7 @@ type Database struct {
 	PanelTeams                     *PanelTeamsTable
 	PanelTicketPermissions         *PanelTicketPermissionsTable
 	PanelAutoClose                 *PanelAutoCloseTable
+	PanelCloseReasons              *PanelCloseReasonsTable
 	PanelUserMention               *PanelUserMention
 	PanelHereMention               *PanelHereMention
 	Participants                   *ParticipantTable
@@ -189,6 +190,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		PanelTeams:                     newPanelTeamsTable(pool),
 		PanelTicketPermissions:         newPanelTicketPermissionsTable(pool),
 		PanelAutoClose:                 newPanelAutoCloseTable(pool),
+		PanelCloseReasons:              newPanelCloseReasonsTable(pool),
 		PanelUserMention:               newPanelUserMention(pool),
 		PanelHereMention:               newPanelHereMention(pool),
 		Participants:                   newParticipantTable(pool),
@@ -307,6 +309,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.PanelSupportHours,         // must be created after panels table
 		d.PanelSupportHoursSettings, // must be created after panels table
 		d.PanelAutoClose,            // must be created after panels table
+		d.PanelCloseReasons,
 		d.PanelUserMention,
 		d.PanelHereMention,
 		d.PatreonEntitlements,
