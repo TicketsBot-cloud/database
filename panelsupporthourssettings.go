@@ -18,7 +18,7 @@ type PanelSupportHoursSettings struct {
 	OutOfHoursBehaviour OutOfHoursBehaviour `json:"out_of_hours_behaviour"`
 	OutOfHoursTitle     string              `json:"out_of_hours_title"`
 	OutOfHoursMessage   string              `json:"out_of_hours_message"`
-	OutOfHoursColour    int                 `json:"out_of_hours_colour"`
+	OutOfHoursColour    *int                `json:"out_of_hours_colour"`
 }
 
 type PanelSupportHoursSettingsTable struct {
@@ -36,9 +36,11 @@ CREATE TABLE IF NOT EXISTS panel_support_hours_settings (
     "out_of_hours_behaviour" VARCHAR(50) NOT NULL DEFAULT 'block_creation',
     "out_of_hours_title" VARCHAR(100) NOT NULL DEFAULT 'Support is currently unavailable',
     "out_of_hours_message" TEXT NOT NULL DEFAULT '',
-    "out_of_hours_colour" int4 NOT NULL DEFAULT 0,
+    "out_of_hours_colour" int4 DEFAULT NULL,
     FOREIGN KEY ("panel_id") REFERENCES panels("panel_id") ON DELETE CASCADE
-);`
+);
+ALTER TABLE panel_support_hours_settings ALTER COLUMN "out_of_hours_colour" DROP NOT NULL;
+ALTER TABLE panel_support_hours_settings ALTER COLUMN "out_of_hours_colour" DROP DEFAULT;`
 }
 
 // Get retrieves the support hours settings for a panel. Returns the settings, whether they exist, and any error.
