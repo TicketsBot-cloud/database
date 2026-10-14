@@ -652,6 +652,80 @@ ORDER BY "panel_id" ASC;`
 	return
 }
 
+// GetByGuildWithoutComponents is GetByGuild without loading the component trees, which are
+// left nil. For hot paths that never read them.
+func (p *PanelTable) GetByGuildWithoutComponents(ctx context.Context, guildId uint64) (panels []Panel, e error) {
+	query := `
+SELECT
+	panel_id,
+	message_id,
+	channel_id,
+	guild_id,
+	title,
+	content,
+	colour,
+	target_category,
+	emoji_name,
+	emoji_id,
+	emoji_animated,
+	welcome_message,
+	default_team,
+	custom_id,
+	image_url,
+	thumbnail_url,
+	button_style,
+	button_label,
+	form_id,
+	naming_scheme,
+	force_disabled,
+	disabled,
+	exit_survey_form_id,
+	pending_category,
+	mention_behaviour,
+	transcript_channel_id,
+	use_threads,
+	ticket_notification_channel,
+	cooldown_seconds,
+	ticket_limit,
+	hide_close_button,
+	hide_close_with_reason_button,
+	hide_claim_button,
+	show_in_open_command,
+	store_transcripts,
+	overflow_enabled,
+	overflow_category_id,
+	users_can_close,
+	close_confirmation,
+	feedback_enabled,
+	support_can_view,
+	support_can_type,
+	message_uses_components_v2,
+	NULL::text,
+	welcome_message_uses_components_v2,
+	NULL::text,
+	name
+FROM panels
+WHERE "guild_id" = $1
+ORDER BY "panel_id" ASC;`
+
+	rows, err := p.Query(ctx, query, guildId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var panel Panel
+		if err := rows.Scan(panel.fieldPtrs()...); err != nil {
+			return nil, err
+		}
+
+		panels = append(panels, panel)
+	}
+
+	return
+}
+
 func (p *PanelTable) GetByGuildWithWelcomeMessage(ctx context.Context, guildId uint64) (panels []PanelWithWelcomeMessage, e error) {
 	query := `
 SELECT
@@ -1080,16 +1154,12 @@ AND "panel_id" IN (
 		}
 	} else if panelCount < freeLimit {
 		// Too few enabled: re-enable force-disabled panels to fill the vacancy, oldest first.
-		// Never re-enable a panel force-disabled for using Components V2 - that disablement
-		// is a premium gate, not part of the free panel quota this function balances, and
-		// re-enabling it here would silently restore a premium feature to a free-tier guild.
 		query := `
 UPDATE panels SET "force_disabled" = false
 WHERE "guild_id" = $1
-AND "message_uses_components_v2" = false
 AND "panel_id" IN (
 	SELECT "panel_id" FROM panels
-	WHERE "guild_id" = $1 AND "force_disabled" = true AND "message_uses_components_v2" = false
+	WHERE "guild_id" = $1 AND "force_disabled" = true
 	ORDER BY "panel_id" ASC LIMIT $2
 );`
 		if _, err := tx.Exec(ctx, query, guildId, freeLimit-panelCount); err != nil {
@@ -1098,24 +1168,6 @@ AND "panel_id" IN (
 	}
 
 	return tx.Commit(ctx)
-}
-
-// SetComponentsV2ForceDisabled sets force_disabled for all of a guild's panels that use
-// a Components V2 button message. Used by the premium downgrade sweep.
-func (p *PanelTable) SetComponentsV2ForceDisabled(ctx context.Context, guildId uint64, forceDisabled bool) error {
-	query := `UPDATE panels SET "force_disabled" = $2 WHERE "guild_id" = $1 AND "message_uses_components_v2" = true;`
-	_, err := p.Exec(ctx, query, guildId, forceDisabled)
-	return err
-}
-
-// ClearWelcomeMessageComponentsV2 disables Components V2 for a guild's welcome messages and
-// clears the stored component tree, without touching the panel's button message or force_disabled
-// state. Used by the premium downgrade sweep: losing Components V2 access on the welcome message
-// falls back to the classic hardcoded welcome text, it does not disable the panel.
-func (p *PanelTable) ClearWelcomeMessageComponentsV2(ctx context.Context, guildId uint64) error {
-	query := `UPDATE panels SET "welcome_message_uses_components_v2" = false, "welcome_message_components" = NULL WHERE "guild_id" = $1 AND "welcome_message_uses_components_v2" = true;`
-	_, err := p.Exec(ctx, query, guildId)
-	return err
 }
 
 func (p *PanelTable) Delete(ctx context.Context, panelId int) (err error) {
