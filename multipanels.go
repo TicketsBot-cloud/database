@@ -46,7 +46,6 @@ CREATE INDEX IF NOT EXISTS multi_panels_guild_id ON multi_panels("guild_id");
 CREATE INDEX IF NOT EXISTS multi_panels_message_id ON multi_panels("message_id");
 ALTER TABLE multi_panels ADD COLUMN IF NOT EXISTS "uses_components_v2" bool NOT NULL DEFAULT false;
 ALTER TABLE multi_panels ADD COLUMN IF NOT EXISTS "components" JSONB DEFAULT NULL;
-ALTER TABLE multi_panels ADD COLUMN IF NOT EXISTS "force_disabled" bool NOT NULL DEFAULT false;
 ALTER TABLE multi_panels ADD COLUMN IF NOT EXISTS "name" text DEFAULT NULL;`
 }
 
