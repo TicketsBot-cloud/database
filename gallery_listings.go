@@ -42,7 +42,7 @@ type GalleryListing struct {
 	// Panel visual design fields - only populated for panel listings
 	Title          string    `json:"title"`
 	Content        string    `json:"content"`
-	Colour         int32     `json:"colour"`
+	Colour         *int32    `json:"colour"`
 	ImageUrl       *string   `json:"image_url"`
 	ThumbnailUrl   *string   `json:"thumbnail_url"`
 	ButtonStyle    *int16    `json:"button_style"`
@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS gallery_listings (
 	"snapshot_data"      JSONB,
 	"title"              VARCHAR(255) NOT NULL DEFAULT '',
 	"content"            TEXT NOT NULL DEFAULT '',
-	"colour"             INT4 NOT NULL DEFAULT 0,
+	"colour"             INT4 NULL,
 	"image_url"          TEXT,
 	"thumbnail_url"      TEXT,
 	"button_style"       INT2 DEFAULT 1,
@@ -92,6 +92,8 @@ CREATE TABLE IF NOT EXISTS gallery_listings (
 	"created_at"         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 	"updated_at"         TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+ALTER TABLE gallery_listings ALTER COLUMN "colour" DROP NOT NULL;
+ALTER TABLE gallery_listings ALTER COLUMN "colour" DROP DEFAULT;
 CREATE INDEX IF NOT EXISTS gallery_listings_status_idx ON gallery_listings("status");
 CREATE INDEX IF NOT EXISTS gallery_listings_category_idx ON gallery_listings("category");
 CREATE INDEX IF NOT EXISTS gallery_listings_listing_type_idx ON gallery_listings("listing_type");
