@@ -3,7 +3,7 @@ package database
 type GalleryPanelSnapshot struct {
 	Title          string  `json:"title"`
 	Content        string  `json:"content"`
-	Colour         int32   `json:"colour"`
+	Colour         *int32  `json:"colour"`
 	ImageUrl       *string `json:"image_url,omitempty"`
 	ThumbnailUrl   *string `json:"thumbnail_url,omitempty"`
 	ButtonStyle    *int16  `json:"button_style"`

@@ -21,12 +21,13 @@ func (c CustomColours) Schema() string {
 CREATE TABLE IF NOT EXISTS custom_colours(
 	"guild_id" int8 NOT NULL,
 	"colour_id" int2 NOT NULL,
-	"colour_code" int4 NOT NULL,
+	"colour_code" int4 NULL,
 	PRIMARY KEY("guild_id", "colour_id")
-);`
+);
+ALTER TABLE custom_colours ALTER COLUMN "colour_code" DROP NOT NULL;`
 }
 
-func (c *CustomColours) Get(ctx context.Context, guildId uint64, colourId int16) (colourCode int, ok bool, e error) {
+func (c *CustomColours) Get(ctx context.Context, guildId uint64, colourId int16) (colourCode *int, ok bool, e error) {
 	query := `SELECT "colour_code" FROM custom_colours WHERE "guild_id" = $1 AND "colour_id" = $2;`
 
 	if err := c.QueryRow(ctx, query, guildId, colourId).Scan(&colourCode); err == nil {
@@ -40,18 +41,19 @@ func (c *CustomColours) Get(ctx context.Context, guildId uint64, colourId int16)
 	return
 }
 
-func (c *CustomColours) GetAll(ctx context.Context, guildId uint64) (map[int16]int, error) {
+func (c *CustomColours) GetAll(ctx context.Context, guildId uint64) (map[int16]*int, error) {
 	query := `SELECT "colour_id", "colour_code" FROM custom_colours WHERE "guild_id" = $1;`
 
 	rows, err := c.Query(ctx, query, guildId)
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
-	colours := make(map[int16]int)
+	colours := make(map[int16]*int)
 	for rows.Next() {
 		var colourId int16
-		var colourCode int
+		var colourCode *int
 
 		if err = rows.Scan(&colourId, &colourCode); err != nil {
 			return nil, err
@@ -60,10 +62,10 @@ func (c *CustomColours) GetAll(ctx context.Context, guildId uint64) (map[int16]i
 		colours[colourId] = colourCode
 	}
 
-	return colours, nil
+	return colours, rows.Err()
 }
 
-func (c *CustomColours) Set(ctx context.Context, guildId uint64, colourId int16, colourCode int) (err error) {
+func (c *CustomColours) Set(ctx context.Context, guildId uint64, colourId int16, colourCode *int) (err error) {
 	query := `
 INSERT INTO custom_colours("guild_id", "colour_id", "colour_code")
 VALUES($1, $2, $3) ON CONFLICT("guild_id", "colour_id")
@@ -74,7 +76,7 @@ DO UPDATE SET "colour_code" = $3;`
 }
 
 // BatchSet colours = map[colour_id]value
-func (c *CustomColours) BatchSet(ctx context.Context, guildId uint64, colours map[int16]int) (err error) {
+func (c *CustomColours) BatchSet(ctx context.Context, guildId uint64, colours map[int16]*int) (err error) {
 	query := `
 INSERT INTO custom_colours("guild_id", "colour_id", "colour_code")
 VALUES($1, $2, $3) ON CONFLICT("guild_id", "colour_id")
@@ -86,8 +88,12 @@ DO UPDATE SET "colour_code" = $3;`
 	}
 
 	res := c.SendBatch(ctx, batch)
-	defer res.Close()
+	for range colours {
+		if _, err = res.Exec(); err != nil {
+			res.Close()
+			return
+		}
+	}
 
-	_, err = res.Exec()
-	return
+	return res.Close()
 }

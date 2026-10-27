@@ -14,7 +14,7 @@ type Panel struct {
 	GuildId                        uint64  `json:"guild_id,string"`
 	Title                          string  `json:"title"`
 	Content                        string  `json:"content"`
-	Colour                         int32   `json:"colour"`
+	Colour                         *int32  `json:"colour"`
 	TargetCategory                 uint64  `json:"category_id,string"`
 	EmojiName                      *string `json:"emoji_name"`
 	EmojiId                        *uint64 `json:"emoji_id,string"`
@@ -82,7 +82,7 @@ CREATE TABLE IF NOT EXISTS panels(
 	"guild_id" int8 NOT NULL,
 	"title" varchar(255) NOT NULL,
 	"content" text NOT NULL,
-	"colour" int4 NOT NULL,
+	"colour" int4 NULL,
 	"target_category" int8 NOT NULL,
 	"emoji_name" varchar(32) DEFAULT NULL,
 	"emoji_id" int8 DEFAULT NULL,
@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS panels(
 	FOREIGN KEY ("exit_survey_form_id") REFERENCES forms("form_id"),
 	PRIMARY KEY("panel_id")
 );
+ALTER TABLE panels ALTER COLUMN "colour" DROP NOT NULL;
 CREATE INDEX IF NOT EXISTS panels_guild_id ON panels("guild_id");
 CREATE INDEX IF NOT EXISTS panels_message_id ON panels("message_id");
 CREATE INDEX IF NOT EXISTS panels_form_id ON panels("form_id");
@@ -369,7 +370,7 @@ AND panels.panel_id = $2;`
 		if embedId != nil {
 			embed.Id = *embedId
 			embed.GuildId = *embedGuildId
-			embed.Colour = *embedColour
+			embed.Colour = embedColour
 
 			embedPtr = &embed
 		}
@@ -836,7 +837,7 @@ ORDER BY panels.panel_id ASC;`
 		if embedId != nil {
 			embed.Id = *embedId
 			embed.GuildId = *embedGuildId
-			embed.Colour = *embedColour
+			embed.Colour = embedColour
 
 			embedPtr = &embed
 		}

@@ -13,7 +13,7 @@ type CustomEmbed struct {
 	Title         *string    `json:"title,omitempty"`
 	Description   *string    `json:"description,omitempty"`
 	Url           *string    `json:"url,omitempty"`
-	Colour        uint32     `json:"colour,omitempty"`
+	Colour        *uint32    `json:"colour"`
 	AuthorName    *string    `json:"author_name,omitempty"`
 	AuthorIconUrl *string    `json:"author_icon_url,omitempty"`
 	AuthorUrl     *string    `json:"author_url,omitempty"`
@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS embeds(
 	"title" VARCHAR(255) NULL,
 	"description" TEXT NULL CONSTRAINT description_length CHECK (length(description) <= 4096),
 	"url" VARCHAR(255) NULL,
-	"colour" int4 NOT NULL CONSTRAINT colour_range CHECK (colour >= 0 AND colour <= 16777215),
+	"colour" int4 NULL CONSTRAINT colour_range CHECK (colour >= 0 AND colour <= 16777215),
 	"author_name" VARCHAR(255) NULL,
 	"author_icon_url" VARCHAR(255) NULL,
 	"author_url" VARCHAR(255) NULL,
@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS embeds(
 	"timestamp" TIMESTAMP NULL,
 	PRIMARY KEY("id")
 );
+ALTER TABLE embeds ALTER COLUMN "colour" DROP NOT NULL;
 CREATE INDEX IF NOT EXISTS embeds_guild_id ON embeds("guild_id");
 
 ALTER TABLE embeds ALTER COLUMN "title" TYPE VARCHAR(256);
