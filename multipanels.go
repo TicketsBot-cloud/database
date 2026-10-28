@@ -191,10 +191,7 @@ UPDATE multi_panels
 		"channel_id" = $3,
 		"select_menu" = $4,
 		"select_menu_placeholder" = $5,
-		"embed" = $6,
-		"uses_components_v2" = $7,
-		"components" = $8,
-		"name" = $9
+		"embed" = $6
 	WHERE
 		"id" = $1
 ;`
@@ -210,10 +207,23 @@ UPDATE multi_panels
 	}
 
 	_, err = p.Exec(ctx, query,
-		multiPanelId, multiPanel.MessageId, multiPanel.ChannelId, multiPanel.SelectMenu, multiPanel.SelectMenuPlaceholder, embedRaw, multiPanel.UsesComponentsV2, multiPanel.Components, multiPanel.Name,
+		multiPanelId, multiPanel.MessageId, multiPanel.ChannelId, multiPanel.SelectMenu, multiPanel.SelectMenuPlaceholder, embedRaw,
 	)
 
 	return
+}
+
+// Kept out of Update so callers that don't set these fields can't clear them.
+func (p *MultiPanelTable) UpdateComponentsV2(ctx context.Context, multiPanelId int, usesComponentsV2 bool, components *string) error {
+	query := `UPDATE multi_panels SET "uses_components_v2" = $2, "components" = $3 WHERE "id" = $1;`
+	_, err := p.Exec(ctx, query, multiPanelId, usesComponentsV2, components)
+	return err
+}
+
+func (p *MultiPanelTable) SetName(ctx context.Context, multiPanelId int, name *string) error {
+	query := `UPDATE multi_panels SET "name" = $2 WHERE "id" = $1;`
+	_, err := p.Exec(ctx, query, multiPanelId, name)
+	return err
 }
 
 func (p *MultiPanelTable) UpdateMessageId(ctx context.Context, multiPanelId int, messageId uint64) (err error) {

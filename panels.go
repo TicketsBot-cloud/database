@@ -653,8 +653,7 @@ ORDER BY "panel_id" ASC;`
 	return
 }
 
-// GetByGuildWithoutComponents is GetByGuild without loading the component trees, which are
-// left nil. For hot paths that never read them.
+// For hot paths that never read the component trees, which are left nil.
 func (p *PanelTable) GetByGuildWithoutComponents(ctx context.Context, guildId uint64) (panels []Panel, e error) {
 	query := `
 SELECT
@@ -1032,12 +1031,7 @@ UPDATE panels
 		"close_confirmation" = $38,
 		"feedback_enabled" = $39,
 		"support_can_view" = $40,
-		"support_can_type" = $41,
-		"message_uses_components_v2" = $42,
-		"message_components" = $43,
-		"welcome_message_uses_components_v2" = $44,
-		"welcome_message_components" = $45,
-		"name" = $46
+		"support_can_type" = $41
 	WHERE
 		"panel_id" = $1
 ;`
@@ -1084,13 +1078,21 @@ UPDATE panels
 		panel.FeedbackEnabled,
 		panel.SupportCanView,
 		panel.SupportCanType,
-		panel.MessageUsesComponentsV2,
-		panel.MessageComponents,
-		panel.WelcomeMessageUsesComponentsV2,
-		panel.WelcomeMessageComponents,
-		panel.Name,
 	)
 
+	return err
+}
+
+// Kept out of UpdateWithTx so callers that don't set these fields can't clear them.
+func (p *PanelTable) UpdateComponentsV2WithTx(ctx context.Context, tx pgx.Tx, panel Panel) error {
+	query := `UPDATE panels SET "message_uses_components_v2" = $2, "message_components" = $3, "welcome_message_uses_components_v2" = $4, "welcome_message_components" = $5 WHERE "panel_id" = $1;`
+	_, err := tx.Exec(ctx, query, panel.PanelId, panel.MessageUsesComponentsV2, panel.MessageComponents, panel.WelcomeMessageUsesComponentsV2, panel.WelcomeMessageComponents)
+	return err
+}
+
+func (p *PanelTable) SetNameWithTx(ctx context.Context, tx pgx.Tx, panelId int, name *string) error {
+	query := `UPDATE panels SET "name" = $2 WHERE "panel_id" = $1;`
+	_, err := tx.Exec(ctx, query, panelId, name)
 	return err
 }
 
