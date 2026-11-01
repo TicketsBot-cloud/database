@@ -185,6 +185,21 @@ RETURNING
 }
 
 func (p *MultiPanelTable) Update(ctx context.Context, multiPanelId int, multiPanel MultiPanel) (err error) {
+	tx, err := p.Begin(ctx)
+	if err != nil {
+		return err
+	}
+
+	defer tx.Rollback(ctx)
+
+	if err := p.UpdateWithTx(ctx, tx, multiPanelId, multiPanel); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (p *MultiPanelTable) UpdateWithTx(ctx context.Context, tx pgx.Tx, multiPanelId int, multiPanel MultiPanel) error {
 	query := `
 UPDATE multi_panels
 	SET "message_id" = $2,
@@ -206,23 +221,22 @@ UPDATE multi_panels
 		embedRaw = ptr(string(embedRawBytes))
 	}
 
-	_, err = p.Exec(ctx, query,
+	_, err := tx.Exec(ctx, query,
 		multiPanelId, multiPanel.MessageId, multiPanel.ChannelId, multiPanel.SelectMenu, multiPanel.SelectMenuPlaceholder, embedRaw,
 	)
 
-	return
-}
-
-// Kept out of Update so callers that don't set these fields can't clear them.
-func (p *MultiPanelTable) UpdateComponentsV2(ctx context.Context, multiPanelId int, usesComponentsV2 bool, components *string) error {
-	query := `UPDATE multi_panels SET "uses_components_v2" = $2, "components" = $3 WHERE "id" = $1;`
-	_, err := p.Exec(ctx, query, multiPanelId, usesComponentsV2, components)
 	return err
 }
 
-func (p *MultiPanelTable) SetName(ctx context.Context, multiPanelId int, name *string) error {
+func (p *MultiPanelTable) UpdateComponentsV2WithTx(ctx context.Context, tx pgx.Tx, multiPanelId int, usesComponentsV2 bool, components *string) error {
+	query := `UPDATE multi_panels SET "uses_components_v2" = $2, "components" = $3 WHERE "id" = $1;`
+	_, err := tx.Exec(ctx, query, multiPanelId, usesComponentsV2, components)
+	return err
+}
+
+func (p *MultiPanelTable) SetNameWithTx(ctx context.Context, tx pgx.Tx, multiPanelId int, name *string) error {
 	query := `UPDATE multi_panels SET "name" = $2 WHERE "id" = $1;`
-	_, err := p.Exec(ctx, query, multiPanelId, name)
+	_, err := tx.Exec(ctx, query, multiPanelId, name)
 	return err
 }
 

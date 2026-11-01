@@ -123,4 +123,3 @@ func (b *ServerBlacklist) ListAllEntries(ctx context.Context) ([]ServerBlacklist
 	}
 	return entries, rows.Err()
 }
-

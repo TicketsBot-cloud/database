@@ -653,7 +653,6 @@ ORDER BY "panel_id" ASC;`
 	return
 }
 
-// For hot paths that never read the component trees, which are left nil.
 func (p *PanelTable) GetByGuildWithoutComponents(ctx context.Context, guildId uint64) (panels []Panel, e error) {
 	query := `
 SELECT
@@ -1083,7 +1082,6 @@ UPDATE panels
 	return err
 }
 
-// Kept out of UpdateWithTx so callers that don't set these fields can't clear them.
 func (p *PanelTable) UpdateComponentsV2WithTx(ctx context.Context, tx pgx.Tx, panel Panel) error {
 	query := `UPDATE panels SET "message_uses_components_v2" = $2, "message_components" = $3, "welcome_message_uses_components_v2" = $4, "welcome_message_components" = $5 WHERE "panel_id" = $1;`
 	_, err := tx.Exec(ctx, query, panel.PanelId, panel.MessageUsesComponentsV2, panel.MessageComponents, panel.WelcomeMessageUsesComponentsV2, panel.WelcomeMessageComponents)
