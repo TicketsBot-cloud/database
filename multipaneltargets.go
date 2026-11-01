@@ -88,6 +88,11 @@ SELECT
 	panels.feedback_enabled,
 	panels.support_can_view,
 	panels.support_can_type,
+	panels.message_uses_components_v2,
+	panels.message_components,
+	panels.welcome_message_uses_components_v2,
+	panels.welcome_message_components,
+	panels.name,
 	multi_panel_targets.custom_label,
 	multi_panel_targets.description,
 	multi_panel_targets.custom_emoji_name,
@@ -136,11 +141,15 @@ SELECT
 	multi_panels.guild_id,
 	multi_panels.select_menu,
 	multi_panels.select_menu_placeholder,
-	multi_panels.embed
+	multi_panels.embed,
+	multi_panels.uses_components_v2,
+	multi_panels.components,
+	multi_panels.name
 FROM multi_panel_targets
 INNER JOIN multi_panels
 ON multi_panels.id = multi_panel_targets.multi_panel_id
-WHERE multi_panel_targets.panel_id = $1;
+WHERE multi_panel_targets.panel_id = $1
+ORDER BY multi_panels.id ASC;
 `
 
 	rows, err := p.Query(ctx, query, panelId)
@@ -161,6 +170,9 @@ WHERE multi_panel_targets.panel_id = $1;
 			&multiPanel.SelectMenu,
 			&multiPanel.SelectMenuPlaceholder,
 			&embedRaw,
+			&multiPanel.UsesComponentsV2,
+			&multiPanel.Components,
+			&multiPanel.Name,
 		)
 
 		if err != nil {

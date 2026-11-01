@@ -9,11 +9,11 @@ import (
 )
 
 type DashboardOnboarding struct {
-	GuildId              uint64     `json:"guild_id,string"`
-	OnboardingCompleted  bool       `json:"onboarding_completed"`
+	GuildId               uint64     `json:"guild_id,string"`
+	OnboardingCompleted   bool       `json:"onboarding_completed"`
 	OnboardingCompletedAt *time.Time `json:"onboarding_completed_at"`
-	CurrentStep          int16      `json:"current_step"`
-	Skipped              bool       `json:"skipped"`
+	CurrentStep           int16      `json:"current_step"`
+	Skipped               bool       `json:"skipped"`
 }
 
 type DashboardOnboardingTable struct {

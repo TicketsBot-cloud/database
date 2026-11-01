@@ -13,7 +13,7 @@ type GalleryPanelSnapshot struct {
 }
 
 type GalleryTagSnapshot struct {
-	Content *string              `json:"content,omitempty"`
+	Content *string                `json:"content,omitempty"`
 	Embed   *CustomEmbedWithFields `json:"embed,omitempty"`
 }
 
