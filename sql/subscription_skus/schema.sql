@@ -1,4 +1,9 @@
-CREATE TYPE premium_tier AS ENUM ('premium', 'whitelabel');
+DO $$
+BEGIN
+    CREATE TYPE premium_tier AS ENUM ('premium', 'whitelabel');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS subscription_skus
 (

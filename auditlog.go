@@ -61,6 +61,8 @@ const (
 	AuditActionTicketClaim             AuditActionType = 95
 	AuditActionTicketUnclaim           AuditActionType = 96
 	AuditActionTicketTransfer          AuditActionType = 97
+	AuditActionTranscriptDelete        AuditActionType = 98
+	AuditActionTranscriptDeleteAll     AuditActionType = 99
 
 	AuditActionGuildIntegrationActivate   AuditActionType = 100
 	AuditActionGuildIntegrationUpdate     AuditActionType = 101
@@ -158,6 +160,8 @@ const (
 
 	AuditActionSubmissionBlacklistAdd    AuditActionType = 450
 	AuditActionSubmissionBlacklistRemove AuditActionType = 451
+
+	AuditActionTranscriptExport AuditActionType = 460
 )
 
 type AuditCategory int16
@@ -210,6 +214,7 @@ const (
 	AuditResourceUserEmailVerification AuditResourceType = 37
 	AuditResourceFeatureFlag           AuditResourceType = 38
 	AuditResourceSubmissionBlacklist   AuditResourceType = 39
+	AuditResourceTranscript            AuditResourceType = 40
 )
 
 type AuditLogEntry struct {
