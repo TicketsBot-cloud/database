@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"slices"
 	"time"
 
 	"github.com/TicketsBot-cloud/common/model"
@@ -123,6 +124,7 @@ CREATE TABLE IF NOT EXISTS guild_ticket_counters (
 CREATE INDEX IF NOT EXISTS tickets_channel_id ON tickets("channel_id");
 CREATE INDEX IF NOT EXISTS tickets_panel_id ON tickets("panel_id");
 CREATE INDEX IF NOT EXISTS tickets_guild_id_open_time ON tickets("guild_id", "open_time");
+CREATE INDEX IF NOT EXISTS tickets_user_id_idx ON tickets("user_id");
 ALTER TABLE tickets ADD COLUMN IF NOT EXISTS "source" int2 NOT NULL DEFAULT 0;
 `
 }
@@ -1300,6 +1302,152 @@ ORDER BY "id" DESC LIMIT $3;
 	}
 
 	return tickets, nil
+}
+
+func (t *TicketTable) FilterClosedWithTranscript(ctx context.Context, guildId uint64, ticketIds []int) ([]int, error) {
+	if len(ticketIds) == 0 {
+		return nil, nil
+	}
+
+	ticketIdArray := &pgtype.Int4Array{}
+	if err := ticketIdArray.Set(ticketIds); err != nil {
+		return nil, err
+	}
+
+	query := `
+SELECT "id"
+FROM tickets
+WHERE "guild_id" = $1 AND "id" = ANY($2) AND "has_transcript" = true AND "open" = false
+ORDER BY "id";`
+
+	rows, err := t.Query(ctx, query, guildId, ticketIdArray)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []int
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+
+		ids = append(ids, id)
+	}
+
+	return ids, rows.Err()
+}
+
+func (t *TicketTable) GetClosedWithTranscript(ctx context.Context, guildId uint64) ([]int, error) {
+	query := `
+SELECT "id"
+FROM tickets
+WHERE "guild_id" = $1 AND "has_transcript" = true AND "open" = false
+ORDER BY "id";`
+
+	rows, err := t.Query(ctx, query, guildId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []int
+	for rows.Next() {
+		var id int
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+
+		ids = append(ids, id)
+	}
+
+	return ids, rows.Err()
+}
+
+func (t *TicketTable) GuildsWithClosedTranscripts(ctx context.Context, guildIds []uint64) ([]uint64, error) {
+	if len(guildIds) == 0 {
+		return nil, nil
+	}
+
+	guildIdArray := &pgtype.Int8Array{}
+	if err := guildIdArray.Set(guildIds); err != nil {
+		return nil, err
+	}
+
+	// EXISTS stops at a guild's first matching ticket instead of reading all of them.
+	query := `
+SELECT u.guild_id
+FROM unnest($1::int8[]) WITH ORDINALITY AS u(guild_id, n)
+WHERE EXISTS (SELECT 1 FROM tickets WHERE "guild_id" = u.guild_id AND "has_transcript" = true AND "open" = false)
+ORDER BY u.n;`
+
+	rows, err := t.Query(ctx, query, guildIdArray)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var ids []uint64
+	for rows.Next() {
+		var id uint64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+
+		ids = append(ids, id)
+	}
+
+	return ids, rows.Err()
+}
+
+type TranscriptRef struct {
+	GuildId  uint64
+	TicketId int
+}
+
+func TranscriptRefGuildIds(refs []TranscriptRef) []uint64 {
+	var guildIds []uint64
+	for _, ref := range refs {
+		if !slices.Contains(guildIds, ref.GuildId) {
+			guildIds = append(guildIds, ref.GuildId)
+		}
+	}
+
+	return guildIds
+}
+
+func (t *TicketTable) GetUserTranscriptRefs(ctx context.Context, userId uint64) ([]TranscriptRef, error) {
+	query := `
+SELECT s.guild_id, s.ticket_id
+FROM (
+	SELECT "guild_id", "id" AS ticket_id FROM tickets WHERE "user_id" = $1
+	UNION
+	SELECT "guild_id", "ticket_id" FROM participant WHERE "user_id" = $1
+	UNION
+	SELECT "guild_id", "ticket_id" FROM ticket_members WHERE "user_id" = $1
+) s
+INNER JOIN tickets t ON t."guild_id" = s.guild_id AND t."id" = s.ticket_id
+WHERE t."has_transcript" = true AND t."open" = false
+ORDER BY s.guild_id, s.ticket_id;`
+
+	rows, err := t.Query(ctx, query, userId)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var refs []TranscriptRef
+	for rows.Next() {
+		var ref TranscriptRef
+		if err := rows.Scan(&ref.GuildId, &ref.TicketId); err != nil {
+			return nil, err
+		}
+
+		refs = append(refs, ref)
+	}
+
+	return refs, rows.Err()
 }
 
 func (t *TicketTable) GetTotalTicketCountInterval(ctx context.Context, guildId uint64, interval time.Duration) (count int, e error) {

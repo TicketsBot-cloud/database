@@ -4,7 +4,7 @@ go 1.22.0
 
 toolchain go1.22.4
 
-//replace github.com/TicketsBot-cloud/common => ../common
+replace github.com/TicketsBot-cloud/common => ../common
 
 require (
 	github.com/TicketsBot-cloud/common v0.0.0-20260905165836-38e4090764a4
@@ -28,6 +28,6 @@ require (
 	github.com/modern-go/reflect2 v1.0.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	go.uber.org/multierr v1.10.0 // indirect
-	golang.org/x/crypto v0.28.0 // indirect
-	golang.org/x/text v0.19.0 // indirect
+	golang.org/x/crypto v0.29.0 // indirect
+	golang.org/x/text v0.20.0 // indirect
 )
