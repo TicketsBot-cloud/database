@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS participant(
 	FOREIGN KEY("guild_id", "ticket_id") REFERENCES tickets("guild_id", "id"),
 	PRIMARY KEY("guild_id", "ticket_id", "user_id")
 );
+CREATE INDEX IF NOT EXISTS participant_user_id_idx ON participant("user_id");
 `
 }
 

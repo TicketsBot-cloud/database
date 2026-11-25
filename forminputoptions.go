@@ -41,7 +41,7 @@ func (f FormInputOptionTable) Schema() string {
 	CHECK(position <= 25),
 	PRIMARY KEY("id")
 	);
-	CREATE INDEX IF NOT EXISTS form_input_option_form_input_id ON form_input_options("form_input_id");
+	CREATE INDEX IF NOT EXISTS form_input_option_form_input_id ON form_input_option("form_input_id");
 	`
 }
 

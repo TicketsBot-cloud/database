@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS ticket_members(
 );
 
 CREATE INDEX IF NOT EXISTS ticket_members_guild_ticket ON ticket_members("guild_id", "ticket_id");
+CREATE INDEX IF NOT EXISTS ticket_members_user_id_idx ON ticket_members("user_id");
 `
 }
 

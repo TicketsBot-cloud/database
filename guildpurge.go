@@ -106,6 +106,7 @@ var guildPurgeExempt = map[string]string{
 	"entitlements":         "billing record, retained beyond the guild",
 	"server_blacklist":     "global ban list; purging it would silently un-ban the guild",
 	"submission_blacklist": "gallery ban list; purging it would silently un-ban the guild",
+	"gdpr_exports":         "the requester's export (guild_ids, not guild_id); gdpr-worker deletes it when it expires",
 }
 
 // PurgeGuildData deletes all data associated with a guild from all tables.

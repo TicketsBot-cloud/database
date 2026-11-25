@@ -1,4 +1,9 @@
-CREATE TYPE sku_type AS ENUM ('subscription', 'consumable', 'durable');
+DO $$
+BEGIN
+    CREATE TYPE sku_type AS ENUM ('subscription', 'consumable', 'durable');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS skus
 (

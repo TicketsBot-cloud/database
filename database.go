@@ -53,6 +53,7 @@ type Database struct {
 	GalleryListings                *GalleryListingsTable
 	GalleryListingTags             *GalleryListingTagsTable
 	GdprLogs                       *GDPRLogsTable
+	GdprExports                    *GdprExportsTable
 	GlobalBlacklist                *GlobalBlacklist
 	GuildLeaveTime                 *GuildLeaveTime
 	GuildMetadata                  *GuildMetadataTable
@@ -166,6 +167,7 @@ func NewDatabase(pool *pgxpool.Pool) *Database {
 		GalleryListings:                newGalleryListingsTable(pool),
 		GalleryListingTags:             newGalleryListingTagsTable(pool),
 		GdprLogs:                       newGDPRLogs(pool),
+		GdprExports:                    newGdprExportsTable(pool),
 		GlobalBlacklist:                newGlobalBlacklist(pool),
 		GuildLeaveTime:                 newGuildLeaveTime(pool),
 		GuildMetadata:                  newGuildMetadataTable(pool),
@@ -279,11 +281,11 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.DashboardUsers,
 		d.Embeds,
 		d.EmbedFields, // depends on embeds
+		d.Skus,        // must be created before entitlements, discord_store_skus, subscription_skus, multi_server_skus, polar_products
 		d.Entitlements,
 		d.Experiment,
 		d.ExperimentExposures,
 		d.DiscordEntitlements, // depends on entitlements
-		d.Skus,                // must be created before discord_store_skus, subscription_skus, multi_server_skus, polar_products
 		d.DiscordStoreSkus,    // depends on skus
 		d.SubscriptionSkus,    // depends on skus
 		d.Forms,
@@ -292,6 +294,7 @@ func (d *Database) CreateTables(ctx context.Context, pool *pgxpool.Pool) {
 		d.FormInputApiConfig,  // depends on form inputs
 		d.FormInputApiHeaders, // depends on form input api config
 		d.GdprLogs,
+		d.GdprExports,
 		d.GlobalBlacklist,
 		d.GuildLeaveTime,
 		d.DashboardOnboarding,

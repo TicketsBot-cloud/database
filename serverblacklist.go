@@ -26,7 +26,10 @@ func newServerBlacklist(db *pgxpool.Pool) *ServerBlacklist {
 }
 
 func (b ServerBlacklist) Schema() string {
-	return `CREATE TABLE IF NOT EXISTS server_blacklist("guild_id" int8 NOT NULL UNIQUE, PRIMARY KEY("guild_id"));`
+	return `CREATE TABLE IF NOT EXISTS server_blacklist("guild_id" int8 NOT NULL UNIQUE, PRIMARY KEY("guild_id"));
+ALTER TABLE server_blacklist ADD COLUMN IF NOT EXISTS "reason" TEXT;
+ALTER TABLE server_blacklist ADD COLUMN IF NOT EXISTS "owner_id" int8;
+ALTER TABLE server_blacklist ADD COLUMN IF NOT EXISTS "real_owner_id" int8;`
 }
 
 func (b *ServerBlacklist) IsBlacklisted(ctx context.Context, guildId uint64) (bool, *string, error) {

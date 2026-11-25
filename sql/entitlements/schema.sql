@@ -1,4 +1,9 @@
-CREATE TYPE premium_source AS ENUM ('discord', 'patreon', 'voting', 'key');
+DO $$
+BEGIN
+    CREATE TYPE premium_source AS ENUM ('discord', 'patreon', 'voting', 'key');
+EXCEPTION
+    WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS entitlements
 (

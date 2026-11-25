@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS global_blacklist(
 	"user_id" int8 NOT NULL UNIQUE,
 	PRIMARY KEY("user_id")
 );
+ALTER TABLE global_blacklist ADD COLUMN IF NOT EXISTS "reason" TEXT;
 `
 }
 
