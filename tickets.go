@@ -1548,12 +1548,12 @@ func secondsToDuration(secs *float64) *time.Duration {
 
 func (t *TicketTable) GetTicketCountByPanel(ctx context.Context, guildId uint64, nDays int, filter *PanelFilter) ([]PanelTicketCount, error) {
 	query := `
-SELECT t.panel_id, COALESCE(p.title, 'No Panel'), COUNT(*)
+SELECT t.panel_id, COALESCE(NULLIF(p.name, ''), p.title, 'No Panel'), COUNT(*)
 FROM tickets t
 LEFT JOIN panels p ON t.panel_id = p.panel_id
 WHERE t.guild_id = $1 AND t.open_time > CURRENT_DATE - ($2 - 1) * INTERVAL '1 day'` +
 		PanelPredicate("t", 3, 4) + `
-GROUP BY t.panel_id, p.title
+GROUP BY t.panel_id, p.name, p.title
 ORDER BY COUNT(*) DESC;`
 
 	arr, unassigned, err := filter.Args()

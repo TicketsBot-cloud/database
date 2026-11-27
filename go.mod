@@ -4,7 +4,7 @@ go 1.22.0
 
 toolchain go1.22.4
 
-//replace github.com/TicketsBot-cloud/common => ../common
+// replace github.com/TicketsBot-cloud/common => ../common
 
 require (
 	github.com/TicketsBot-cloud/common v0.0.0-20260905165836-38e4090764a4
